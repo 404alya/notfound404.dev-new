@@ -1,0 +1,140 @@
+
+        <p>In this article, we will create a basic <a href="https://nextjs.org/" target="_blank" rel="noopener noreferrer">Next.js</a> application that runs Web assembly (WASM) in a react client component.</p>
+        <p>If you don't know what WASM is, I will not explain it here. You can check out the MDN article <a href="https://developer.mozilla.org/en-US/docs/WebAssembly/Guides/Concepts" target="_blank" rel="noopener noreferrer">here</a>.</p>
+
+        <h2>Setting up the environment</h2>
+        <p>First, we need to create our starter app. We will use <a href="https://nextjs.org/docs/getting-started/installation" target="_blank" rel="noopener noreferrer">create-next-app</a> and <a href="https://bun.sh/" target="_blank" rel="noopener noreferrer">bun</a> to create a new next.js app.</p>
+
+        <pre><code class="language-bash">bunx create-next-app</code></pre>
+        <pre><code class="language-bash">What is your project named? next-wasm
+Would you like to use TypeScript? Yes
+Would you like to use ESLint? Yes
+Would you like to use Tailwind CSS? Yes
+Would you like your code inside a `src/` directory? Yes
+Would you like to use App Router? (recommended) Yes
+Would you like to use Turbopack for `next dev`?  No
+Would you like to customize the import alias (`@/*` by default)? No</code></pre>
+
+        <p>After installation, you can run your app with the <code>bun run dev</code> command and hope everything is working fine.</p>
+        <p>To work with our code, we can delete unnecessary starter codes from the home page and keep only the basic code.</p>
+
+        <pre><code class="language-typescript">import Image from "next/image"
+
+export default function Home() {
+  return (
+    &lt;div className="p-4 flex w-full h-full items-center gap-[10rem] justify-center flex-col"&gt;
+      &lt;div className="flex flex-row gap-[2rem] items-center justify-center"&gt;
+        &lt;Image className="dark:invert" src="/next.svg" alt="Next.js logo" width={180} height={38} priority /&gt;
+        &lt;div className='text-[4rem]'&gt;/&lt;/div&gt;
+        &lt;Image src="/wasm.svg" alt="WASM logo" width={90} height={90} priority /&gt;
+      &lt;/div&gt;
+      &lt;main className='text-white text-2xl font-[500]'&gt;
+        {/*TODO*/}
+      &lt;/main&gt;
+    &lt;/div&gt;
+  )
+}</code></pre>
+
+        <p>You can download wasm.svg from Wikipedia <a href="https://upload.wikimedia.org/wikipedia/commons/1/1f/WebAssembly_Logo.svg" target="_blank" rel="noopener noreferrer">here</a> and paste it in the <code>public</code> directory of our project.</p>
+
+        <h2>Creating a C file</h2>
+        <p>Create a new file named <code>hello.c</code> in the <code>src/c</code> directory of our project. Then paste the following code into it.</p>
+
+        <pre><code class="language-c">#include &lt;stdio.h&gt;
+#include &lt;emscripten/emscripten.h&gt;
+#define EXTERN
+
+EXTERN EMSCRIPTEN_KEEPALIVE void myFunction(int argc, char **argv)
+{
+    printf("Hello world\n");
+}</code></pre>
+
+        <p>The only thing the <code>myFunction</code> function does is print "Hello World" on the console. <a href="https://emscripten.org/docs/api_reference/emscripten.h.html#c.EMSCRIPTEN_KEEPALIVE" target="_blank" rel="noopener noreferrer">EMSCRIPTEN_KEEPALIVE</a> tells the compiler and linker to preserve a symbol, and export it. We will define EXPORTED_FUNCTIONS in the next step.</p>
+
+        <h2>Compiling wasm file</h2>
+        <p>To compile our C code to WASM, we need to use emscripten. If you don't have it installed, you can install it <a href="https://emscripten.org/docs/getting_started/downloads.html" target="_blank" rel="noopener noreferrer">here</a>.</p>
+        <p>After installation, we can compile our C code to WASM by using my custom bash script. Paste it in <code>src/bash/gen_hello_wasm.bash</code> file.</p>
+
+        <pre><code class="language-bash">script_dir="$(dirname "$(realpath "$0")")"
+echo $script_dir
+cd $script_dir
+
+file_name="hello"
+out_files_path="../../public"
+in_files_path="../c"
+
+echo "Setting up emsdk environment..."
+source /home/notfound404/emsdk/emsdk_env.sh
+
+echo "Compiling code..."
+emcc -o $out_files_path/$file_name.js $in_files_path/$file_name.c \
+  -O3 \
+  -s EXPORTED_FUNCTIONS="['_myFunction']" \
+  -s "EXPORTED_RUNTIME_METHODS=['ccall']"
+
+sed -i "s/Module/$file_name/g" $out_files_path/$file_name.js</code></pre>
+
+        <p>All the bash script does is:</p>
+        <ol>
+          <li>Setting up emsdk environment</li>
+          <li>Compiling C code to wasm and generate js, wasm files:
+            <ul>
+              <li><code>-O3</code> — optimization level. <strong>THIS IS IMPORTANT</strong>: without it the output JS will be 50kb+ and slow to load.</li>
+              <li><code>-s EXPORTED_FUNCTIONS="['_myFunction']"</code> — exported function names</li>
+              <li><code>-s "EXPORTED_RUNTIME_METHODS=['ccall']"</code> — exported runtime methods</li>
+            </ul>
+          </li>
+          <li>Renaming the default "Module" name to the file name so it's unique across multiple wasm files.</li>
+        </ol>
+
+        <h2>Running wasm</h2>
+        <p>In our home page, we can load our wasm file using next.js Script component from <code>next/script</code>.</p>
+
+        <pre><code class="language-tsx">&lt;main className="text-2xl font-[500] text-white"&gt;
+  &lt;Script src="/hello.js" /&gt;
+&lt;/main&gt;</code></pre>
+
+        <p><code>hello.js</code> will setup the wasm environment and load the file content into the window object. We can then access it via <code>window.hello</code>.</p>
+        <p>Let's create a button to run our wasm code. Paste the following in <code>src/app/DisplayMsgBtn.tsx</code>.</p>
+
+        <pre><code class="language-tsx">'use client';
+
+export const DisplayMsgBtn = () => {
+  const handleOnClick = () => {
+    if (!window.hello) return;
+    window.hello.ccall('myFunction', null, null, null);
+    alert('Check console for output');
+  };
+
+  return (
+    &lt;button
+      onClick={handleOnClick}
+      className="cursor-pointer rounded-md bg-white px-3 py-1 text-2xl font-[500] text-black duration-300"
+    &gt;
+      Display Message
+    &lt;/button&gt;
+  );
+};</code></pre>
+
+        <p>If you are using TypeScript, you might see a <code>Property 'hello' does not exist on type 'Window'</code> error. Create <code>src/types/window.d.ts</code>:</p>
+
+        <pre><code class="language-typescript">export { }
+
+declare global {
+    interface Window {
+        hello: any;
+    }
+}</code></pre>
+
+        <p>Add <code>DisplayMsgBtn</code> in your home page:</p>
+
+        <pre><code class="language-tsx">&lt;main className="text-2xl font-[500] text-white"&gt;
+  &lt;Script src="/hello.js" /&gt;
+  &lt;DisplayMsgBtn /&gt;
+&lt;/main&gt;</code></pre>
+
+        <p>And that's it! You can see the output in the browser console.</p>
+
+        <h2>Final thoughts</h2>
+        <p>I hope this article helped you understand how to run WASM in nextjs. This was my first article, thank you for reading it. If you have any questions or suggestions, please feel free to reach out to me.</p>
+

@@ -1,0 +1,124 @@
+
+        <h2>Introduction</h2>
+        <p>One of the most important things when creating secure Web applications is setting up good firewall. UFW, or Uncomplicated Firewall, is a command line tool that allows you to configure firewall settings easily compared to using iptables. In this tutorial we will prepare Docker container contains basic Nginx code with using UFW to showcase use case in real life.</p>
+        <p>I also provided more resources in the end of this article.</p>
+
+        <h2>Prerequisites</h2>
+        <ol>
+          <li>Would be good if you have basic understanding of how Docker and Docker Compose works. Familiarity with basic commands like <code>docker compose up</code>, <code>docker ps</code>, <code>docker build</code> and <code>docker run</code>.</li>
+          <li>General understanding of how reverse proxies, Nginx works.</li>
+          <li>Already having a Remote server. We will use it in every operation in this article.</li>
+        </ol>
+
+        <h2>Installation</h2>
+        <p>Let's first install the UFW. To check whether UFW is installed or not we can run:</p>
+        <pre><code class="language-bash">sudo ufw status</code></pre>
+        <p>If it's not installed we can simply install it:</p>
+        <pre><code class="language-bash">sudo apt install ufw</code></pre>
+        <p>To check if installation was successful, we can run <code>sudo ufw status</code> again.</p>
+
+        <h2>Preparing docker compose file</h2>
+        <p>Let's start with the docker-compose.yml file. In this example we will just host static html with Nginx and docker.</p>
+        <p>docker-compose.yml:</p>
+        <pre><code class="language-yaml">services:
+  nginx:
+    image: nginx:1-alpine
+    ports:
+      - 8082:80
+    volumes:
+      - ./index.html/:/usr/share/nginx/html</code></pre>
+
+        <ul>
+          <li><strong>services:</strong> These are the services that will create our application. In this case it just contains <code>nginx</code>.</li>
+          <li><strong>image:</strong> The docker image will be used for our <code>nginx</code> service, in our case it's <code>nginx:1-alpine</code>.</li>
+          <li><strong>ports:</strong> Specifies the ports nginx container will use. <code>8082</code> is the public port accessible by the outside world. <code>80</code> is the container's port we are listening on.</li>
+          <li><strong>volumes:</strong> Mounts volumes for docker image to use. In our case <code>index.html</code> will be replaced to <code>/usr/share/nginx/html</code> inside container.</li>
+        </ul>
+
+        <p>Let's create our <code>index.html</code> file next to <code>docker-compose.yml</code>:</p>
+        <pre><code class="language-html">&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;meta charset="UTF-8" /&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+    &lt;title&gt;Document&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Hello world&lt;/h1&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+        <p>To start our application we can run:</p>
+        <pre><code class="language-bash">docker compose up</code></pre>
+        <p>You should be able to reach the application at <code>http://yourip:8082</code>.</p>
+
+        <h2>Setting up UFW rules</h2>
+        <p>Now, let's test UFW with our example. Firstly let's disable UFW.</p>
+        <pre><code class="language-bash">sudo ufw disable</code></pre>
+
+        <h3>Disabling/Enabling IPv6</h3>
+        <p>Depending on your needs, you might want to enable or disable IPv6. In latest versions of Ubuntu, IPv6 is enabled by default. To change it, edit the configuration file at <code>/etc/default/ufw</code>.</p>
+        <p>We can simply change <code>IPV6</code> to <code>yes</code> to allow IPV6.</p>
+        <p>There are lots of configuration files that allow us to fine tune UFW:</p>
+        <ul>
+          <li><strong>/etc/default/ufw:</strong> high level configuration, such as default policies, IPv6 support and kernel modules to use</li>
+          <li><strong>/etc/ufw/before[6].rules:</strong> rules evaluated before any rules added via the ufw command</li>
+          <li><strong>/etc/ufw/after[6].rules:</strong> rules evaluated after any rules added via the ufw command</li>
+          <li><strong>/etc/ufw/sysctl.conf:</strong> kernel network tunables</li>
+          <li><strong>/etc/ufw/ufw.conf:</strong> sets whether or not ufw is enabled on boot and sets the LOGLEVEL</li>
+        </ul>
+
+        <h3>Applying changes</h3>
+        <p>Before enabling UFW, be aware it blocks SSH by default — allow SSH first:</p>
+        <pre><code class="language-bash">sudo ufw allow ssh</code></pre>
+        <p>Let's also allow http and https:</p>
+        <pre><code class="language-bash">sudo ufw allow http
+sudo ufw allow https</code></pre>
+        <p>Start UFW:</p>
+        <pre><code class="language-bash">sudo ufw enable</code></pre>
+        <p>Now UFW will run automatically whenever we start our server.</p>
+
+        <h3>Configuring ports</h3>
+        <p>Let's block all incoming connections so we can manually decide which ones to allow:</p>
+        <pre><code class="language-bash">sudo ufw default deny incoming</code></pre>
+
+        <h3>Issues with docker</h3>
+        <p>You'd expect the website to be blocked now — but Docker by default modifies iptables, bypassing UFW's deny rules. We need to fix this.</p>
+        <p>Thanks to <a href="https://stackoverflow.com/a/51741599/22740544" target="_blank" rel="noopener noreferrer">Feng's stack overflow answer</a>, we can modify <code>/etc/ufw/after.rules</code> and add the following at the end:</p>
+        <pre><code class="language-bash"># BEGIN UFW AND DOCKER
+*filter
+:ufw-user-forward - [0:0]
+:DOCKER-USER - [0:0]
+-A DOCKER-USER -j RETURN -s 10.0.0.0/8
+-A DOCKER-USER -j RETURN -s 172.16.0.0/12
+-A DOCKER-USER -j RETURN -s 192.168.0.0/16
+
+-A DOCKER-USER -j ufw-user-forward
+
+-A DOCKER-USER -j DROP -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -d 192.168.0.0/16
+-A DOCKER-USER -j DROP -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -d 10.0.0.0/8
+-A DOCKER-USER -j DROP -p tcp -m tcp --tcp-flags FIN,SYN,RST,ACK SYN -d 172.16.0.0/12
+-A DOCKER-USER -j DROP -p udp -m udp --dport 0:32767 -d 192.168.0.0/16
+-A DOCKER-USER -j DROP -p udp -m udp --dport 0:32767 -d 10.0.0.0/8
+-A DOCKER-USER -j DROP -p udp -m udp --dport 0:32767 -d 172.16.0.0/12
+
+-A DOCKER-USER -j RETURN
+COMMIT
+# END UFW AND DOCKER</code></pre>
+
+        <p>Restart UFW and docker:</p>
+        <pre><code class="language-bash">sudo systemctl restart ufw &&
+sudo systemctl restart docker</code></pre>
+        <p>Now port 8082 should be blocked. To allow specific ports:</p>
+        <pre><code class="language-bash">sudo ufw allow 8082</code></pre>
+
+        <h2>Conclusion</h2>
+        <p>We've learned how to:</p>
+        <ul>
+          <li>Install and configure UFW</li>
+          <li>Set up Docker with Nginx</li>
+          <li>Handle Docker's interaction with UFW</li>
+          <li>Manage firewall rules for specific ports</li>
+          <li>Configure basic security settings</li>
+        </ul>
+
