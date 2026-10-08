@@ -12,7 +12,7 @@
 const SKILLS = [
   {
     title: 'Java',
-    description: 'Java is a popular programming language for building enterprise applications. It is a high-level, class-based, object-oriented language. Java is first designed to be make easy to develop platform-independent application GUIs. I actually don\'t like java much because of its OOP design. I prefer kotlin instead.',
+    description: 'Java is a popular programming language for building enterprise applications. It is a high-level, class-based, object-oriented language. It was originally designed to make platform-independent applications easy to build. I\'m not a big fan of it because of its heavy OOP design.',
     icon: { type: 'svg', name: 'java' },
     reachedSkillLevel: 40,
     type: 'Language',
@@ -90,7 +90,7 @@ const SKILLS = [
   },
   {
     title: 'Jetpack Compose',
-    description: 'Jetpack compose is a modern UI library for building native java/kotlin applications.',
+    description: 'Jetpack Compose is a modern UI toolkit for building native Android applications.',
     icon: { type: 'svg', name: 'jetpackcompose' },
     iconSize: 'size-10',
     reachedSkillLevel: 100,
@@ -470,7 +470,7 @@ const SKILLS = [
   },
   {
     title: 'Android Studio',
-    description: "I'm using Android studio for developing kotlin-java applications. It's a powerful IDE with a wide range of features and plugins.",
+    description: "I used Android Studio back when I built native Android apps. It's a powerful IDE with a wide range of features and plugins.",
     icon: { type: 'svg', name: 'androidstudio' },
     skillLevel: null,
     type: 'Dev tool',

@@ -200,6 +200,7 @@ read wherever output differs:
 | canonical, `og:*`, `twitter:card` (`share_meta()`) | not emitted | absolute `https://notfound404.dev/…` on every page except `404.html` |
 | hreflang `alternate` links, JSON-LD `@id` / `url` | absolute `site_url` (unchanged) | same |
 | `out/nginx.conf` | never written; a stale one is deleted | written by `write_nginx_conf()` |
+| home page's gameproject2 section (`gameproject2_section()`) | shown | left out (placeholder content), with its slider script and keyframes; its assets are still copied |
 
 - **Dev is the reference build:** it works from `python3 -m http.server` in
   `out/` (or any directory). A change that only touches the mode plumbing must
@@ -242,6 +243,13 @@ read wherever output differs:
     the 404 page.
 - **Global scripts** (Tailwind config and build, theme) live in
   `global_scripts()` only. Page-specific scripts belong to their component.
+- **Theme switch:** `toggleTheme()` in `js/theme.js` flips `<html class="dark">`
+  inside `document.startViewTransition()`, so the whole page cross-fades
+  between the themes (400 ms, set on `::view-transition-group(root)` in
+  `css/tailwind-config.css`; the old/new snapshots inherit it). Browsers
+  without view transitions and reduced-motion users switch at once. Don't add
+  per-element colour transitions for the theme: they'd fight the cross-fade
+  and slow every hover.
 - **Scripts never leak globals.** Every inlined script is wrapped in an IIFE.
   After changing JS, `window` must not gain new names.
 - **Data-driven content:** add an article by adding one entry to `articles[]`
@@ -270,8 +278,13 @@ read wherever output differs:
   translation has the source's lang, its declared lang differs from the
   target article's, both sides of a pair set `AI_used`, or an AI-translated
   article's lang has no text in `ai_translation_notice_text()` (only `en`
-  and `tr` so far: add the text there for a new language). An article page with translations gets
-  `language_switcher()` under the h1 (current language as a highlighted span,
+  and `tr` so far: add the text there for a new language). Every article
+  page gets `article_date()` right under the h1: a muted `<p>` holding
+  `<time datetime="YYYY-MM-DD">` with `published_date_text()` (in the page's
+  language: "March 28, 2025" for `en`, "28 Mart 2025" for `tr`, the ISO date
+  for any other lang; add month names there for a new language). It
+  `die_msg()`s on a `published` that isn't `YYYY-MM-DD`. An article page with translations gets
+  `language_switcher()` under the date (current language as a highlighted span,
   links to `<base>article/<slug>.html` labelled with the uppercase code);
   an article that some other article lists with `AI_used = true` gets
   `ai_translation_notice()` below it (a muted italic `<p role="note">` in the
@@ -293,6 +306,8 @@ read wherever output differs:
   crawlers, and the order stays `compare_newest_first()`. Without JS (so
   without Tailwind either), a `<noscript>` rule in `articles_list()` hides
   `[data-hidden]`, so the list shows the fallbacks.
+- The gameproject2 section is dev only for now: `page_home()` skips it in prod
+  (see "Build modes"). Remove that condition to publish it.
 - Slides of the home page's gameproject2 slider go in `gameproject2_slides[]`
   (`kind` `SLIDE_IMAGE` or `SLIDE_VIDEO`, `path` under `assets/`, `alt`: the
   img alt or the video's aria-label), in display order; the first is shown
@@ -539,7 +554,8 @@ Run steps 1–5 for **both** build modes. Build into `out/`, copy it aside
      expected);
    - in prod, also `/`, `/articles`, `/article/<slug>` and a deep missing URL
      (`/a/b/c`): the 404 page there loads its fonts and assets;
-   - interactive pieces work: theme toggle and saved preference, mobile menu,
+   - interactive pieces work: theme toggle (cross-fades over 400 ms; instant
+     with reduced motion) and saved preference, mobile menu,
      nav hide/show on scroll, progress bar, skills tooltip, category filter,
      shrink button, presence open/close (when it's on the page), repos list
      (when it's on a page), gameproject2 slider (both arrows and the
@@ -552,7 +568,7 @@ Run steps 1–5 for **both** build modes. Build into `out/`, copy it aside
      heading entries restore the scroll position; language links fade like
      other internal links;
    - home headings: the same four checks for `index.html#<id>` with every id
-     (`who-am-i`, `experience`, `knowledge-center`, `gameproject2`) at both
+     (`who-am-i`, `experience`, `knowledge-center`, and `gameproject2` in dev only) at both
      viewports, landing at 96 px every time (repeat the loads: this used to
      be intermittent). Heading links inherit colour and weight, have
      `cursor: pointer`, and show the `#` on hover without changing the
@@ -584,7 +600,9 @@ Run steps 1–5 for **both** build modes. Build into `out/`, copy it aside
    - text follows the text-size rule in section 5, and the skill tooltip and
      presence panel are wide enough to fit it;
    - the Experience section sits above "Knowledge Center";
-   - the "gameproject2" section below "Knowledge Center": lorem ipsum text
+   - prod: the home page has no gameproject2 section ("Knowledge Center" is
+     the last one);
+   - dev: the "gameproject2" section below "Knowledge Center": lorem ipsum text
      and a 16:9 slider of videos and images (a looping video first) with round previous/next arrows over its edges
      and a rotating yellow border (static under `prefers-reduced-motion`,
      where slides also switch without the fade);
@@ -599,6 +617,11 @@ Run steps 1–5 for **both** build modes. Build into `out/`, copy it aside
      heading;
    - AI translation notice on AI-translated articles (a muted italic line
      under the language buttons);
+   - every article shows its publication date (muted, small) right under the
+     title, in the page's language;
+   - article-body links are white in the dark theme
+     (`dark:prose-a:text-white` in `article_prose_class`; heading links keep
+     the heading colour);
    - the page-transition cover is `#202020` in the dark theme;
    - the articles list shows one card per translation group (the visitor's
      language, else English);

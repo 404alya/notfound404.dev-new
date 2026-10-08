@@ -8,8 +8,14 @@ function initTheme() {
 }
 
 function toggleTheme() {
-  const isDark = document.documentElement.classList.toggle('dark');
-  localStorage.setItem(THEME_KEY, String(isDark));
+  const flip = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem(THEME_KEY, String(isDark));
+  };
+  // Cross-fade the whole page between the two themes (duration in
+  // css/tailwind-config.css). Older browsers and reduced motion switch at once.
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return flip();
+  document.startViewTransition(flip);
 }
 
 // Wire up all theme buttons on the page

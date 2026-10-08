@@ -202,7 +202,7 @@ static const size_t gameproject2_slide_count = sizeof gameproject2_slides / size
 /* Site identity, used by the meta description and the JSON-LD data. */
 static const char site_name[] = "notfound404.dev";
 static const char site_url[] = "https://notfound404.dev/";
-static const char site_description[] = "Samet Alpdeger, a self-taught full-stack developer working with the web and Kotlin. Articles on web development, C, compilers and low-level programming.";
+static const char site_description[] = "Samet Alpdeger, a self-taught full-stack web developer. Articles on web development, C, compilers and low-level programming.";
 static const char author_name[] = "Samet Alpdeger";
 static const char author_job_title[] = "Software Engineer";
 static const char author_email[] = "hi@notfound404.dev";
@@ -670,8 +670,11 @@ static char *unique_id(const IdList *used, const char *base_id)
 /* Heading anchors look like the heading (colour, weight, the h2 underline it
  * already has) instead of a .prose link, and show a '#' while hovered. The
  * marker is absolutely positioned so it never takes space or rewraps a
- * heading. scroll-mt keeps a heading clear of the fixed navbar when it's
- * scrolled to, from a click or from a hash in the URL. Used by every .prose
+ * heading. The link is its containing block: otherwise, on a page with no
+ * positioned ancestor (articles), the marker belongs to the viewport and
+ * stays put while the scroll root scrolls. scroll-mt keeps a heading clear of
+ * the fixed navbar when it's scrolled to, from a click or from a hash in the
+ * URL. Used by every .prose
  * container whose headings link to themselves: the article body and the home
  * page's sections. */
 static char *heading_link_styles(void)
@@ -686,7 +689,7 @@ static char *heading_link_styles(void)
 static const char heading_link_class[] =
     "prose-headings:scroll-mt-24 prose-heading-link:cursor-pointer prose-heading-link:text-inherit! "
     "prose-heading-link:no-underline! prose-heading-link:[font-weight:inherit]! "
-    "prose-heading-link:after:absolute prose-heading-link:after:ml-2 prose-heading-link:after:content-['#'] "
+    "prose-heading-link:relative prose-heading-link:after:absolute prose-heading-link:after:ml-2 prose-heading-link:after:content-['#'] "
     "prose-heading-link:after:opacity-0 prose-heading-link:hover:after:opacity-50 "
     "prose-heading-link:focus-visible:after:opacity-50";
 
@@ -1192,9 +1195,9 @@ static char *description_section(void)
         attr(div, htmc_fmt("class=\"%s %s pt-10\"", home_prose_class, heading_link_class))(
             attr(div, htmc_strlit(class="w-full p-2"))(
                 own(home_heading(HOME_ABOUT)),
-                p("I'm a 20 year old self-taught fullstack ", strong("Web"),
-                  " developer. I can work with a lot of languages and frameworks, but I focus on the Web ecosystem. "
-                  "I build mobile apps, websites, desktop apps and backend services."),
+                p("I'm a 20 year old self-taught full-stack ", strong("Web"),
+                  " developer. The web is what I do professionally: I build websites, web applications and the "
+                  "backend services behind them, from the interface down to the database."),
                 p("I also really enjoy learning low-level stuff like the C programming language, compilers, graphics "
                   "APIs and 3D rendering libraries. I don't use these to make money and I'm not an expert in them yet; "
                   "I just genuinely enjoy learning them. For me, coding isn't only about making money. I'm always "
@@ -1781,6 +1784,38 @@ static char *ai_translation_notice(const Article *entry)
     );
 }
 
+/* Human-readable publication date in the page's language ("March 28, 2025",
+ * "28 Mart 2025"); other languages get the ISO date as is. Exits on a
+ * published value that isn't YYYY-MM-DD. */
+static char *published_date_text(const Article *entry)
+{
+    static const char *const months_en[] = { "January", "February", "March", "April", "May", "June", "July",
+                                             "August", "September", "October", "November", "December" };
+    static const char *const months_tr[] = { "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
+                                             "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık" };
+    int year, month, day, length = 0;
+
+    if (!entry->published || sscanf(entry->published, "%4d-%2d-%2d%n", &year, &month, &day, &length) != 3 ||
+        length != 10 || entry->published[length] || month < 1 || month > 12 || day < 1 || day > 31)
+        die_msg("article \"%s\": published must be YYYY-MM-DD", entry->slug);
+
+    if (strcmp(entry->lang, "en") == 0)
+        return format_string("%s %d, %d", months_en[month - 1], day, year);
+    if (strcmp(entry->lang, "tr") == 0)
+        return format_string("%d %s %d", day, months_tr[month - 1], year);
+    return format_string("%s", entry->published);
+}
+
+/* Muted publication date right under the article title. */
+static char *article_date(const Article *entry)
+{
+    return htmc(
+        attr(p, htmc_strlit(class="-mt-4 mb-6 text-sm font-normal text-[#0000008a] md:-mt-6 md:text-base dark:text-[#ffffff80]"))(
+            attr(time, htmc_fmt("datetime=\"%s\"", entry->published))(own(published_date_text(entry)))
+        )
+    );
+}
+
 /* A heading element found in an article body: <hN attrs>inner</hN>. */
 typedef struct {
     const char *start;     /* '<' of the opening tag */
@@ -2031,7 +2066,8 @@ static int page_home(void)
                         own(description_section()),
                         own(experience_section(base)),
                         own(skills_section()),
-                        own(gameproject2_section(base))
+                        /* Placeholder content for now: dev only until it's ready to publish. */
+                        production ? "" : own(gameproject2_section(base))
                     ),
                     attr(div, htmc_strlit(class="flex w-full pt-[10rem] flex-col items-center"))(
                         own(final_words())
@@ -2100,7 +2136,7 @@ static int page_404(void)
 /* Classes of the article's .prose container (the heading link classes are
  * added next to them). */
 static const char article_prose_class[] =
-    "prose px-3 text-base md:text-lg text-[#000000c2] selection:bg-[#9f004da3] prose-h1:pt-10 prose-blockquote:text-[#000000ab] prose-li:marker:text-[#000000] dark:text-[#ffffffa2] dark:prose-headings:text-white dark:prose-strong:text-white dark:prose-blockquote:text-[#ffffffab] prose-a:cursor-pointer dark:prose-a:text-[#ffffff4b] dark:prose-code:text-[#ffffffd9] dark:prose-li:marker:text-white [&_pre]:bg-transparent! [&_pre]:p-0! [&_pre>code.hljs]:rounded-lg [&_pre>code.hljs]:p-4! [&_pre>code.hljs]:text-sm/6 md:[&_pre>code.hljs]:text-base/7 prose-code:text-sm md:prose-code:text-base";
+    "prose px-3 text-base md:text-lg text-[#000000c2] selection:bg-[#9f004da3] prose-h1:pt-10 prose-blockquote:text-[#000000ab] prose-li:marker:text-[#000000] dark:text-[#ffffffa2] dark:prose-headings:text-white dark:prose-strong:text-white dark:prose-blockquote:text-[#ffffffab] prose-a:cursor-pointer dark:prose-a:text-white dark:prose-code:text-[#ffffffd9] dark:prose-li:marker:text-white [&_pre]:bg-transparent! [&_pre]:p-0! [&_pre>code.hljs]:rounded-lg [&_pre>code.hljs]:p-4! [&_pre>code.hljs]:text-sm/6 md:[&_pre>code.hljs]:text-base/7 prose-code:text-sm md:prose-code:text-base";
 
 static int page_article(const Article *entry)
 {
@@ -2130,6 +2166,7 @@ static int page_article(const Article *entry)
             attr(div, htmc_strlit(class="items-center justify-center md:flex"))(
                 attr(div, htmc_fmt("class=\"%s %s\"", article_prose_class, heading_link_class))(
                     h1(htmc_fmt("%s", entry->title)),
+                    own(article_date(entry)),
                     has_translations(entry) ? own(language_switcher(entry, base)) : "",
                     is_ai_translated(entry) ? own(ai_translation_notice(entry)) : "",
                     entry->cover ? own(article_cover(entry, base)) : "",
