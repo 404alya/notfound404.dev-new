@@ -1,4 +1,4 @@
-// Skills rendering, filtering, tooltip, and shrink logic
+// Skills rendering, filtering, tooltip/drawer, and shrink logic
 // Depends on SKILLS from skills-data.js (inlined into the same block scope)
 
 const SKILL_CATEGORIES = ['All', 'Language', 'Library-framework', 'Service', 'Tool', 'Database', 'API', 'Dev tool', 'Other'];
@@ -80,7 +80,7 @@ function renderSkillIcon(skill, basePath, index) {
   // background, icon) carries the opacity so the orange dot isn't dimmed.
   return `
     <div
-      class="group relative size-16 cursor-pointer rounded-lg duration-200 hover:scale-110"
+      class="group relative size-16 cursor-pointer rounded-lg duration-200 hover:scale-110 active:scale-90"
       data-index="${index}"
       role="button"
       tabindex="0"
@@ -137,12 +137,8 @@ function placeTooltip(tooltip, mouseX, mouseY) {
   tooltip.style.top = Math.max(PAD, Math.min(top, vh - h - PAD)) + 'px';
 }
 
-function showTooltip(skill, mouseX, mouseY) {
-  clearTimeout(tooltipTimeout);
-  const tooltip = document.getElementById('skill-tooltip');
-  if (!tooltip) return;
-
-
+// The details shown by both the tooltip and the drawer.
+function skillDetailsHtml(skill) {
   const learningBadge = skill.learning
     ? `<div class="items-center pl-2 border-l-2 border-[#ff8cf0]] text-[#ff8cf0] text-sm md:text-base">Still learning</div>` : '';
   const relearnBadge = skill.forgotButCanRelearnIn
@@ -165,8 +161,7 @@ function showTooltip(skill, mouseX, mouseY) {
       </div>
     </div>` : '';
 
-  tooltip.innerHTML = `
-    <div class="flex w-[15rem] md:w-[20rem] flex-col gap-3 rounded-md p-3 text-white shadow-[0_0px_10px_1px_rgba(0,0,0,0.5)] backdrop-blur-lg bg-[#000000b9]">
+  return `
       ${learningBadge}
       ${notUsedBadge}
       ${relearnBadge}
@@ -177,7 +172,17 @@ function showTooltip(skill, mouseX, mouseY) {
       ${skillLevelHtml}
       <div class="flex flex-col gap-1">
         ${skill.type ? `<div class="text-sm md:text-base">${skill.type}</div>` : ''}
-      </div>
+      </div>`;
+}
+
+function showTooltip(skill, mouseX, mouseY) {
+  clearTimeout(tooltipTimeout);
+  const tooltip = document.getElementById('skill-tooltip');
+  if (!tooltip) return;
+
+  tooltip.innerHTML = `
+    <div class="flex w-[15rem] md:w-[20rem] flex-col gap-3 rounded-md p-3 text-white shadow-[0_0px_10px_1px_rgba(0,0,0,0.5)] backdrop-blur-lg bg-[#000000b9]">
+      ${skillDetailsHtml(skill)}
     </div>`;
 
   tooltip.classList.remove('hidden');
@@ -197,13 +202,129 @@ function hideTooltipDelayed() {
   }, 300);
 }
 
+// ─── Drawer (touch screens) ───────────────────────────────────────
+// Phones and tablets can't hover, so a tap opens the details in a bottom
+// drawer instead of the cursor-following tooltip.
+const touchQuery = window.matchMedia('(hover: none)');
+let drawerOpener = null;
+
+function openDrawer(skill, opener) {
+  const drawer = document.getElementById('skill-drawer');
+  const backdrop = document.getElementById('skill-drawer-backdrop');
+  const content = document.getElementById('skill-drawer-content');
+  if (!drawer || !backdrop || !content) return;
+
+  content.innerHTML = skillDetailsHtml(skill);
+  content.scrollTop = 0;
+  drawerOpener = opener;
+  // First open: leave display:none, then let the closed state render once so
+  // the slide-up transition has a starting point.
+  if (drawer.hidden) {
+    drawer.hidden = backdrop.hidden = false;
+    void drawer.offsetHeight;
+  }
+  drawer.setAttribute('data-open', '');
+  backdrop.setAttribute('data-open', '');
+  document.getElementById('skill-drawer-close')?.focus({ preventScroll: true });
+}
+
+function closeDrawer() {
+  const drawer = document.getElementById('skill-drawer');
+  if (!drawer?.hasAttribute('data-open')) return;
+  drawer.removeAttribute('data-open');
+  document.getElementById('skill-drawer-backdrop')?.removeAttribute('data-open');
+  drawerOpener?.focus({ preventScroll: true });
+  drawerOpener = null;
+}
+
+function initDrawer() {
+  const drawer = document.getElementById('skill-drawer');
+  const backdrop = document.getElementById('skill-drawer-backdrop');
+  if (!drawer || !backdrop) return;
+  // The section sits in a z-10 stacking context, under the navbar; from
+  // <body> the backdrop covers the whole page.
+  document.body.append(backdrop, drawer);
+  document.getElementById('skill-drawer-close')?.addEventListener('click', closeDrawer);
+  backdrop.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDrawer();
+  });
+  initDrawerDrag(drawer, backdrop);
+}
+
+// Swipe down to close: the drawer follows the finger and closes when pulled
+// past a quarter of its height or flicked down (over 20 px, faster than
+// 0.5 px/ms); otherwise it springs back.
+// From the content it only drags while that is scrolled to the top, so
+// scrolling the details still works.
+function initDrawerDrag(drawer, backdrop) {
+  const content = document.getElementById('skill-drawer-content');
+  // velocity = px/ms over the last ~100 ms of movement (sample = older point)
+  let startY = 0, dy = 0, sampleDy = 0, sampleTime = 0, velocity = 0, lastMove = 0;
+  let state = 'idle'; // 'idle' | 'pending' (direction not known yet) | 'dragging'
+
+  function reset() {
+    drawer.style.transition = backdrop.style.transition = '';
+    drawer.style.translate = backdrop.style.opacity = '';
+    state = 'idle';
+  }
+
+  drawer.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    const fromContent = content?.contains(e.target);
+    if (fromContent && content.scrollTop > 0) return;
+    startY = e.touches[0].clientY;
+    dy = sampleDy = velocity = 0;
+    sampleTime = e.timeStamp;
+    state = 'pending';
+  }, { passive: true });
+
+  drawer.addEventListener('touchmove', e => {
+    if (state === 'idle') return;
+    dy = e.touches[0].clientY - startY;
+    const elapsed = e.timeStamp - sampleTime;
+    if (elapsed > 0) velocity = (dy - sampleDy) / elapsed;
+    if (elapsed > 100) { sampleDy = dy; sampleTime = e.timeStamp; }
+    lastMove = e.timeStamp;
+    if (state === 'pending') {
+      // An upward first move is a scroll of the content, not a drag
+      if (dy < 0) { state = 'idle'; return; }
+      if (dy === 0) return;
+      state = 'dragging';
+      drawer.style.transition = backdrop.style.transition = 'none';
+    }
+    if (e.cancelable) e.preventDefault();
+    const offset = Math.max(0, dy);
+    drawer.style.translate = `0 ${offset}px`;
+    backdrop.style.opacity = String(1 - offset / drawer.offsetHeight);
+  }, { passive: false });
+
+  function onEnd(e) {
+    if (state !== 'dragging') { state = 'idle'; return; }
+    // A finger that stopped before lifting isn't a flick
+    if (e.timeStamp - lastMove > 100) velocity = 0;
+    const close = dy > drawer.offsetHeight / 4 || (dy > 20 && velocity > 0.5);
+    // Clearing the inline values lets the class transitions animate from
+    // where the finger left the drawer, to closed or back to open.
+    reset();
+    if (close) closeDrawer();
+  }
+  drawer.addEventListener('touchend', onEnd);
+  drawer.addEventListener('touchcancel', onEnd);
+}
+
 // ─── Attach hover events to skill icons (delegated, attached once) ─
 function attachSkillEvents() {
   const grid = document.getElementById('skills-grid');
   if (!grid || skillEventsAttached) return;
   skillEventsAttached = true;
 
+  // iOS Safari only applies :active (the icons' press effect) to elements
+  // under a touch listener.
+  grid.addEventListener('touchstart', () => {}, { passive: true });
+
   grid.addEventListener('mouseover', e => {
+    if (touchQuery.matches) return;
     const el = e.target.closest('[data-index]');
     if (!el || !grid.contains(el)) return;
     const skill = SKILLS[parseInt(el.dataset.index, 10)];
@@ -211,12 +332,14 @@ function attachSkillEvents() {
   });
 
   grid.addEventListener('mousemove', e => {
+    if (touchQuery.matches) return;
     const el = e.target.closest('[data-index]');
     if (!el || !grid.contains(el)) return;
     moveTooltip(e.clientX, e.clientY);
   });
 
   grid.addEventListener('mouseout', e => {
+    if (touchQuery.matches) return;
     const el = e.target.closest('[data-index]');
     if (!el || !grid.contains(el)) return;
     hideTooltipDelayed();
@@ -227,6 +350,10 @@ function attachSkillEvents() {
     if (!el || !grid.contains(el)) return;
     const skill = SKILLS[parseInt(el.dataset.index, 10)];
     if (!skill) return;
+    if (touchQuery.matches) {
+      openDrawer(skill, el);
+      return;
+    }
     const tooltip = document.getElementById('skill-tooltip');
     if (tooltip?.classList.contains('hidden')) {
       showTooltip(skill, e.clientX || window.innerWidth / 2, e.clientY || window.innerHeight / 2);
@@ -356,6 +483,7 @@ function initLastUpdated() {
 // ─── Init skills section ───────────────────────────────────────────
 function initSkills(basePath = '') {
   renderSkills(basePath);
+  initDrawer();
   initCategoryDropdown(basePath);
   initShrinkButton(basePath);
   initLastUpdated();

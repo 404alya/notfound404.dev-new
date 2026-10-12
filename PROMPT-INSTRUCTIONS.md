@@ -447,6 +447,24 @@ read wherever output differs:
 - `js/nav.js` closes the mobile menu when one of its links is clicked: an
   in-page link like "Who am I?" on the home page doesn't unload the page.
 
+### Skill details: tooltip and drawer
+
+- Devices that can hover get the cursor-following `#skill-tooltip`. Touch
+  screens (`(hover: none)`: phones, tablets) get `skill_drawer()` instead: a
+  bottom drawer in the tooltip's style (`bg-[#000000b9] backdrop-blur-lg`)
+  over a dimmed backdrop. Both show `skillDetailsHtml()` from `js/skills.js`.
+- The drawer and backdrop start `hidden` (so they can't animate while
+  Tailwind first styles the page) and `js/skills.js` moves them to `<body>`:
+  the skills section is inside a `z-10` stacking context, under the navbar.
+- Swipe down closes the drawer (`initDrawerDrag()`, touch events): it follows
+  the finger (inline `translate`, runtime value) and closes past a quarter of
+  its height or on a flick (over 20 px, faster than 0.5 px/ms over the last
+  ~100 ms); otherwise it springs back. From the content it drags only while
+  that is scrolled to the top, so the details still scroll.
+- Skill icons carry `active:scale-90` as a press effect. iOS Safari applies
+  `:active` only under a touch listener, hence the empty passive `touchstart`
+  on `#skills-grid`.
+
 ### Linkable headings (article pages and the home page)
 
 - `heading_link_styles()` adds the `prose-heading-link` variant
@@ -556,7 +574,10 @@ Run steps 1–5 for **both** build modes. Build into `out/`, copy it aside
      (`/a/b/c`): the 404 page there loads its fonts and assets;
    - interactive pieces work: theme toggle (cross-fades over 400 ms; instant
      with reduced motion) and saved preference, mobile menu,
-     nav hide/show on scroll, progress bar, skills tooltip, category filter,
+     nav hide/show on scroll, progress bar, skills tooltip (hover, desktop),
+   skill drawer (tap with touch emulation: opens from the bottom, closes on the
+   backdrop, the × button, Escape and a swipe down; a short pull springs back;
+   never opens on desktop), skill icons scale to 0.9 while pressed, category filter,
      shrink button, presence open/close (when it's on the page), repos list
      (when it's on a page), gameproject2 slider (both arrows and the
      left/right keys cycle every slide and wrap; a hidden video is paused and

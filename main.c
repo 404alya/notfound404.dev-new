@@ -1330,11 +1330,39 @@ static char *experience_section(const char *base)
     );
 }
 
+/* Bottom drawer that replaces the tooltip on touch screens (no hover): the
+ * same dark glass panel, sliding up over a dimmed backdrop. skills.js fills
+ * #skill-drawer-content and toggles data-open on both elements. Both start
+ * `hidden` so Tailwind's first styling can't run their transitions during
+ * page load; the script removes it on the first open. Visibility is delayed
+ * only when closing, so the close button can take focus as soon as it opens. */
+static char *skill_drawer(void)
+{
+    return htmc(
+        attr(div, htmc_strlit(id="skill-drawer-backdrop" hidden
+                              class="invisible fixed inset-0 z-50 bg-[#00000066] opacity-0 transition-[opacity,visibility] duration-300 data-[open]:visible data-[open]:transition-opacity data-[open]:opacity-100"))(""),
+        attr(div, htmc_strlit(id="skill-drawer" hidden role="dialog" aria-modal="true" aria-label="Skill details"
+                              class="invisible fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[80vh] w-full max-w-lg translate-y-full flex-col rounded-t-md bg-[#000000b9] text-white shadow-[0_0px_10px_1px_rgba(0,0,0,0.5)] backdrop-blur-lg transition-[translate,visibility] duration-300 data-[open]:visible data-[open]:transition-[translate] data-[open]:translate-y-0 motion-reduce:transition-none"))(
+            attr(div, htmc_strlit(class="relative flex h-10 shrink-0 items-center justify-center"))(
+                attr(div, htmc_strlit(class="h-1 w-10 rounded-full bg-[#ffffff45]"))(""),
+                attr(button, htmc_strlit(id="skill-drawer-close" type="button" aria-label="Close"
+                                         class="absolute right-2 top-1 flex size-8 cursor-pointer items-center justify-center rounded-md text-[#ffffffd0] hover:bg-[#ffffff24]"))(
+                    "<svg class=\"size-5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" viewBox=\"0 0 24 24\" aria-hidden=\"true\">"
+                    "<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M18 6L6 18M6 6l12 12\"/></svg>"
+                )
+            ),
+            attr(div, htmc_strlit(id="skill-drawer-content"
+                                  class="flex flex-col gap-3 overflow-y-auto overscroll-contain px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"))("")
+        )
+    );
+}
+
 /* Skills grid with its controls and hover tooltip; skills.js renders the icons. */
 static char *skills_section(void)
 {
     return htmc(
         attr(div, htmc_strlit(id="skill-tooltip" class="pointer-events-none fixed z-50 hidden w-[15rem] max-w-[15rem] md:w-[20rem] md:max-w-[20rem]"))(""),
+        own(skill_drawer()),
         attr(div, htmc_fmt("class=\"%s %s pb-10\"", home_prose_class, heading_link_class))(
             attr(div, htmc_strlit(class="flex flex-col gap-5"))(
                 attr(div, htmc_strlit(class="flex flex-col p-2"))(
