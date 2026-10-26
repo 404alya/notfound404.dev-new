@@ -206,10 +206,21 @@ static const Slide gameproject2_slides[] = {
 
 static const size_t gameproject2_slide_count = sizeof gameproject2_slides / sizeof gameproject2_slides[0];
 
+/* Skill icons (assets/images/svg/<name>.svg) that turn white in dark mode.
+ * They are inlined into the skills grid (mono_skill_svgs()), where dark mode
+ * fills every <path> white, so they must be drawn with <path>s only and carry
+ * no <style> or ids. The black ones are filled with currentColor; the others
+ * keep their colours in light mode. */
+static const char *const mono_skill_icons[] = {
+    "gsap", "flask", "websocket", "socket", "express", "vercel", "prisma", "php",
+    "mysql", "webflow", "docker", "java",
+};
+static const size_t mono_skill_icon_count = sizeof mono_skill_icons / sizeof mono_skill_icons[0];
+
 /* Site identity, used by the meta description and the JSON-LD data. */
 static const char site_name[] = "notfound404.dev";
 static const char site_url[] = "https://notfound404.dev/";
-static const char site_description[] = "Samet Alpdeger, a self-taught full-stack web developer. Articles on web development, C, compilers and low-level programming.";
+static const char site_description[] = "Samet Alpdeger, a self-taught full-stack developer. Articles on web development, C, compilers and low-level programming.";
 static const char author_name[] = "Samet Alpdeger";
 static const char author_job_title[] = "Software Engineer";
 static const char author_email[] = "hi@notfound404.dev";
@@ -1247,8 +1258,7 @@ static char *description_section(void)
         attr(div, htmc_fmt("class=\"%s %s pt-10\"", home_prose_class, heading_link_class))(
             attr(div, htmc_strlit(class="w-full p-2"))(
                 own(home_heading(HOME_ABOUT)),
-                p("I'm a 20 year old self-taught full-stack ", strong("Web"),
-                  " developer. The web is what I do professionally: I build websites, web applications and the "
+                p("I'm a 20 year old self-taught full-stack developer. The web is what I do professionally: I build websites, web applications and the "
                   "backend services behind them, from the interface down to the database."),
                 p("I also really enjoy learning low-level stuff like the C programming language, compilers, graphics "
                   "APIs and 3D rendering libraries. I don't use these to make money and I'm not an expert in them yet; "
@@ -1409,6 +1419,26 @@ static char *skill_drawer(void)
     );
 }
 
+/* `const MONO_SKILL_SVGS = { name: "<svg ...>", ... };` for skills.js, which
+ * renders these icons inline instead of as <img>. */
+static char *mono_skill_svgs(void)
+{
+    StrBuf out = strbuf_new();
+    strbuf_append(&out, "const MONO_SKILL_SVGS = {");
+    for (size_t n = 0; n < mono_skill_icon_count; n++) {
+        char *path = format_string("assets/images/svg/%s.svg", mono_skill_icons[n]);
+        char *svg = read_file(path);
+        strbuf_append(&out, n ? ",\n  " : "\n  ");
+        json_append_string(&out, mono_skill_icons[n]);
+        strbuf_append(&out, ": ");
+        json_append_string(&out, svg);
+        free(svg);
+        free(path);
+    }
+    strbuf_append(&out, "\n};");
+    return out.data;
+}
+
 /* Skills grid with its controls and hover tooltip; skills.js renders the icons. */
 static char *skills_section(void)
 {
@@ -1442,7 +1472,8 @@ static char *skills_section(void)
                 )
             )
         ),
-        script("(() => {\n", own(read_file("js/skills-data.js")), "\n", own(read_file("js/skills.js")), "\n})();")
+        script("(() => {\n", own(read_file("js/skills-data.js")), "\n", own(mono_skill_svgs()), "\n",
+               own(read_file("js/skills.js")), "\n})();")
     );
 }
 

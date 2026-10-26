@@ -154,6 +154,16 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
   its height or on a flick (over 20 px, faster than 0.5 px/ms over the last
   ~100 ms); otherwise it springs back. From the content it drags only while
   that is scrolled to the top, so the details still scroll.
+- Skill tiles: `bg-[#ffffff4d] dark:bg-[#0000004d]`; the border colour shows
+  the type (`TYPE_BORDER` in `js/skills.js`), with a darker shade of each in
+  dark mode.
+- Logos that would vanish on the dark tiles (single-colour black or dark
+  ones) are listed in `mono_skill_icons[]` in `main.c`, which inlines their
+  SVGs as `MONO_SKILL_SVGS`. `js/skills.js` renders these inline with
+  `text-black dark:text-white dark:[&_path]:fill-white`. Their SVG files must
+  be drawn only with `<path>`s, black ones filled with `currentColor`, and
+  carry no `<style>`, ids, XML prolog or `width`/`height`. To add one, clean
+  the file that way and add its name to the list.
 - Skill icons carry `active:scale-90` as a press effect. iOS Safari applies
   `:active` only under a touch listener, hence the empty passive `touchstart`
   on `#skills-grid`.

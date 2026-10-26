@@ -17,11 +17,11 @@ const CATEGORY_COLORS = {
 
 // Border color classes per type (matching original Tailwind classes)
 const TYPE_BORDER = {
-  'Language':          'border-[#fff67e]',
-  'Service':           'border-[#8975ff]',
-  'Tool':              'border-[#1184ff]',
-  'Database':          'border-[rgb(0,178,131,74%)]/[0.74]',
-  'API':               'border-[#ffbe4d]/[0.74]',
+  'Language':          'border-[#fff67e] dark:border-[#7a6f12]',
+  'Service':           'border-[#8975ff] dark:border-[#3b2a9e]',
+  'Tool':              'border-[#1184ff] dark:border-[#0a4595]',
+  'Database':          'border-[rgb(0,178,131,74%)]/[0.74] dark:border-[#005c43]/[0.74]',
+  'API':               'border-[#ffbe4d]/[0.74] dark:border-[#7a5000]/[0.74]',
 };
 
 const LAST_UPDATED_TS = 1791456155984;
@@ -54,12 +54,19 @@ function getOpacity(skill) {
 function renderSkillIcon(skill, basePath, index) {
   const opacity = getOpacity(skill);
   const iconUrl = getIconUrl(skill.icon, basePath);
-  const borderClass = TYPE_BORDER[skill.type] || 'border-white/30';
+  const borderClass = TYPE_BORDER[skill.type] || 'border-white/30 dark:border-black/30';
   const sizeClass = skill.iconSize || (iconUrl ? 'size-12' : 'size-11');
+
+  // Logos that turn white in dark mode (MONO_SKILL_SVGS, inlined by main.c):
+  // black ones are drawn in currentColor, coloured ones get their paths filled.
+  const monoSvg = skill.icon?.type === 'svg' && Object.hasOwn(MONO_SKILL_SVGS, skill.icon.name)
+    ? MONO_SKILL_SVGS[skill.icon.name] : undefined;
 
   let iconHtml;
   if (!iconUrl) {
     iconHtml = `<img src="${basePath}assets/images/svg/ban.svg" class="${sizeClass}" alt="no icon">`;
+  } else if (monoSvg) {
+    iconHtml = `<div role="img" aria-label="${skill.title}" class="${sizeClass} text-black dark:text-white dark:[&_path]:fill-white [&>svg]:size-full">${monoSvg}</div>`;
   } else if (skill.icon?.darkBg) {
     iconHtml = `<div class="flex ${sizeClass} items-center justify-center rounded-md bg-black p-1"><img src="${iconUrl}" class="h-full w-full" alt="${skill.title}"></div>`;
   } else {
@@ -87,7 +94,7 @@ function renderSkillIcon(skill, basePath, index) {
       aria-label="${skill.title}"
     >
       <div
-        class="absolute inset-0 flex flex-col items-center justify-center rounded-lg border-[0.15rem] ${borderClass} bg-[#ffffffa3] p-[0.15rem] duration-200 group-hover:opacity-100! group-hover:shadow-[0_0px_30px_3px_#ffffff9b]"
+        class="absolute inset-0 flex flex-col items-center justify-center rounded-lg border-[0.15rem] ${borderClass} bg-[#ffffff4d] dark:bg-[#0000004d] p-[0.15rem] duration-200 group-hover:opacity-100! group-hover:shadow-[0_0px_30px_3px_#ffffff9b]"
         style="opacity:${opacity}"
       >
         ${iconHtml}
