@@ -1,4 +1,4 @@
 out/
 output.o
 deps/htmc.git-backup/
-DEPLOY_GUIDE.md
+.claude/skills/deploy/

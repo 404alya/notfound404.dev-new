@@ -192,9 +192,16 @@ typedef struct {
 } Slide;
 
 static const Slide gameproject2_slides[] = {
-    { .kind = SLIDE_VIDEO, .path = "video/gameproject2.webm", .alt = "gameproject2 gameplay" },
-    { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-1.webp", .alt = "gameproject2 screenshot 1" },
-    { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-2.webp", .alt = "gameproject2 screenshot 2" },
+    { .kind = SLIDE_VIDEO, .path = "video/gameproject2.webm",
+      .alt = "Walking from the dark canyon through the pillared hall and up the stairs to the terrace" },
+    { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-1.webp",
+      .alt = "A narrow concrete canyon with towering walls, opening onto the pillared hall" },
+    { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-2.webp",
+      .alt = "Sunlight falling between the giant pillars of the hall through drifting fog" },
+    { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-3.webp",
+      .alt = "Monumental stairs rising to a terrace under a tall apartment tower, seen from the hall" },
+    { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-4.webp",
+      .alt = "Looking up at the weathered apartment tower from the terrace, wrapped in haze" },
 };
 
 static const size_t gameproject2_slide_count = sizeof gameproject2_slides / sizeof gameproject2_slides[0];
@@ -1046,18 +1053,61 @@ static char *theme_button(const char *base)
     );
 }
 
+/* The site logo (paths from logo_animation/logo-clean.svg), inline so it
+ * can draw itself on like that project's animation 01, "drawOn": every
+ * stroke draws in at once (animate-logo-draw in css/tailwind-config.css).
+ * pathLength="1" gives each stroke a length of 1, so one "1 2" dash pattern
+ * on the group, inherited by the strokes, needs no measuring. The draw
+ * starts when the page-transition cover first lifts (`.lifted`), so it plays
+ * while the page fades in, not behind the cover. `.lifted` is never removed,
+ * unlike `.done`: following a link mid-draw would otherwise drop the
+ * animation and snap the logo to finished while the page fades out. Reduced
+ * motion gets the finished logo. The size comes from svg_class and the viewBox, so nothing moves when
+ * the strokes appear. Heap string. */
+static char *logo_svg(const char *svg_class, const char *label)
+{
+    return format_string(
+        "<svg viewBox=\"0 0 167.80118 66.623833\" role=\"img\" aria-label=\"%s\" class=\"h-auto overflow-visible %s\">"
+        "<g transform=\"translate(-5.4742892,-23.443301)\" fill=\"none\" stroke=\"white\" stroke-linecap=\"round\" "
+        "class=\"motion-safe:[stroke-dasharray:1px_2px] motion-safe:[#page-transition.lifted~*_&]:animate-logo-draw\">"
+        "<path pathLength=\"1\" stroke-width=\"11.2849\" stroke-linejoin=\"round\" d=\"m 58.525747,84.424687 c -0.983748,-0.791588 "
+        "-3.589028,-3.671414 -5.212555,-5.983469 -1.692125,-2.410115 -2.3961,-4.269043 -3.035764,-5.857744 -4.98218,-12.374143 "
+        "-2.39607,-21.597526 0.450845,-34.91945 C 52.852382,27.724644 15.449919,71.614543 11.588039,76.361461 8.9728791,57.235531 "
+        "18.321316,34.999366 19.10627,32.44839\"/>"
+        "<g transform=\"matrix(33.367108,-2.0515449,2.0637022,32.58251,-395.29384,-789.84658)\">"
+        "<path pathLength=\"1\" stroke-width=\"0.344\" d=\"m 14.07828,26.019708 c 0.101791,0.169275 0.187782,0.415166 0.207253,0.621335 "
+        "0.01877,0.198697 0.0096,0.367464 -0.0175,0.485593 -0.06292,0.27411 -0.292415,0.485285 -0.231705,0.507233 "
+        "0.109797,0.03969 0.988062,-1.44338 1.078223,-1.396133 0.07725,-0.03589 0.199305,0.347735 -0.02262,1.192315\"/></g>"
+        "<ellipse pathLength=\"1\" stroke-width=\"10.7589\" transform=\"matrix(0.32463809,-0.94583831,0.9324596,0.36127427,0,0)\" "
+        "rx=\"25.728924\" ry=\"25.025105\" cx=\"-19.781778\" cy=\"105.39308\"/>"
+        "<path pathLength=\"1\" stroke-width=\"11.0559\" stroke-linejoin=\"round\" d=\"M 76.956415,73.782069 106.34465,40.791031\"/>"
+        "</g></svg>",
+        label, svg_class);
+}
+
+/* Heap URL of the home page for links built from `base`. Prod links to "/"
+ * itself, the address nginx serves it under, not "/index.html" (a second
+ * address of the same page). Dev keeps <base>index.html, so out/ also works
+ * opened straight from disk, where a directory isn't its index. */
+static char *home_url(const char *base)
+{
+    return format_string("%s%s", base, production ? "" : "index.html");
+}
+
 /* The "Articles" and "Who am I?" links, shared by the desktop bar and the
  * mobile menu. "Who am I?" goes to the home page's heading of that name; on
  * the home page itself page_transition() scrolls to it without a fade. */
 static char *nav_links(const char *base, const char *link_class)
 {
     char *about_id = home_heading_id(HOME_ABOUT);
+    char *home = home_url(base);
     char *links = htmc(
         attr(a, htmc_fmt("href=\"%sarticles.html\"", base),
              htmc_fmt("class=\"cursor-pointer font-pixelify %s\"", link_class))("Articles"),
-        attr(a, htmc_fmt("href=\"%sindex.html#%s\"", base, about_id),
+        attr(a, htmc_fmt("href=\"%s#%s\"", home, about_id),
              htmc_fmt("class=\"cursor-pointer font-pixelify %s\"", link_class))(htmc_fmt("%s", home_headings[HOME_ABOUT]))
     );
+    free(home);
     free(about_id);
     return links;
 }
@@ -1076,14 +1126,14 @@ static char *mobile_menu(const char *base)
 /* Floating top bar; nav.js toggles data-hidden while scrolling. */
 static char *navbar(const char *base)
 {
-    return htmc(
+    char *home = home_url(base);
+    char *bar = htmc(
         attr(div, htmc_strlit(class="pointer-events-none fixed top-0 z-[45] flex w-full justify-center p-2"))(
             attr(nav, htmc_strlit(id="main-nav"
                                   class="pointer-events-auto relative top-0 flex h-full w-full items-center justify-between rounded-lg bg-[#00000071] px-4 py-3 shadow-[0_0px_20px_0.5px_rgba(0,0,0,0.3)] drop-shadow-md backdrop-blur-xs transition-transform duration-300 ease-[ease] data-[hidden]:-translate-y-24 md:w-[50rem] md:bg-[#00000061] md:backdrop-blur-md"))(
-                attr(a, htmc_fmt("href=\"%sindex.html\"", base),
+                attr(a, htmc_fmt("href=\"%s\"", home),
                      htmc_strlit(class="cursor-pointer text-[#ffffff7e] transition-colors hover:text-white font-semibold text-base md:text-lg"))(
-                  img(htmc_fmt("src=\"%sassets/images/svg/logo.svg\"", base),
-                            htmc_strlit(alt="logo" class="w-14 opacity-90 hover:opacity-60 duration-300"))
+                  own(logo_svg("w-14 opacity-90 transition-opacity duration-300 hover:opacity-60", "logo"))
 
       ),
                 attr(div, htmc_strlit(class="hidden flex-row items-center gap-5 min-[600px]:flex"))(
@@ -1104,6 +1154,8 @@ static char *navbar(const char *base)
         ),
         own(inline_script("js/nav.js"))
     );
+    free(home);
+    return bar;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1408,12 +1460,10 @@ static const char gameproject2_border_class[] =
     "motion-reduce:before:animate-none motion-reduce:before:bg-none motion-reduce:before:bg-yellow-400";
 
 /* Every slide covers the whole 16:9 box; only the one with data-active is
- * shown. Visibility (not display) hides the others, so they can cross-fade
- * and stay out of the accessibility tree. */
+ * shown, switching at once (no fade). Visibility (not display) hides the
+ * others, so they stay out of the accessibility tree. */
 static const char gameproject2_slide_class[] =
-    "absolute inset-0 m-0 block size-full object-cover invisible opacity-0 "
-    "transition-[opacity,visibility] duration-300 motion-reduce:transition-none "
-    "data-[active]:visible data-[active]:opacity-100";
+    "absolute inset-0 m-0 block size-full object-cover invisible data-[active]:visible";
 
 static char *gameproject2_slide(const Slide *slide, const char *base, bool active)
 {
@@ -1486,6 +1536,15 @@ static char *gameproject2_slider(const char *base)
     return html;
 }
 
+/* Yellow pill at the right end of the section's heading row, in the slider
+ * border's yellow (a shade lighter in the light theme). It sits beside the
+ * h2, not inside it, so the heading's id and link stay as home_heading()
+ * makes them; the row's gap keeps the link's hover "#" clear of it when the
+ * row is narrow. */
+static const char gameproject2_badge_class[] =
+    "ml-auto whitespace-nowrap rounded-full bg-yellow-300 px-3 py-0.5 text-sm font-semibold text-black "
+    "dark:bg-yellow-400 md:text-base";
+
 /* Project showcase: text and a slider of gameplay videos and screenshots. */
 static char *gameproject2_section(const char *base)
 {
@@ -1493,20 +1552,24 @@ static char *gameproject2_section(const char *base)
         style("\n@keyframes gameproject2-spin { to { transform: rotate(1turn); } }\n"),
         attr(div, htmc_fmt("class=\"%s %s pb-10\"", home_prose_class, heading_link_class))(
             attr(div, htmc_strlit(class="flex flex-col p-2"))(
-                own(home_heading(HOME_GAMEPROJECT2)),
-                attr(p, htmc_strlit(class="max-w-4xl"))(
-                    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore "
-                    "et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut "
-                    "aliquip ex ea commodo consequat."
+                attr(div, htmc_strlit(class="flex flex-wrap items-baseline gap-x-12"))(
+                    own(home_heading(HOME_GAMEPROJECT2)),
+                    attr(span, htmc_fmt("class=\"%s\"", gameproject2_badge_class))("In development")
                 ),
                 attr(p, htmc_strlit(class="max-w-4xl"))(
-                    "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla "
-                    "pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit "
-                    "anim id est laborum."
+                    "gameproject2 is a game about being alone. You walk through a vast brutalist world of raw "
+                    "concrete, from a dark canyon through a hall of giant pillars to a tower lost in the fog, and the "
+                    "music and sounds are there to unsettle you. It should feel empty, eerie and lonely the whole way."
                 ),
                 attr(p, htmc_strlit(class="max-w-4xl"))(
-                    "Curabitur pretium tincidunt lacus. Nulla gravida orci a odio, et tempus feugiat. Nullam varius, "
-                    "turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis sollicitudin mauris."
+                    "You'll carry three things: a gun, a radar and a flashlight. The gun opens locked places. Beyond "
+                    "that, it's mostly there so you feel a little safer: you keep it in your hands, and when something "
+                    "scares you, you shoot."
+                ),
+                attr(p, htmc_strlit(class="max-w-4xl"))(
+                    "The radar shows living things, and it gets loud when it finds one. Most of the time it stays "
+                    "empty. But every now and then it hints that something is alive far away, just enough to keep you "
+                    "on edge."
                 ),
                 attr(div, htmc_fmt("class=\"%s\"", gameproject2_border_class))(
                     own(gameproject2_slider(base))
@@ -2150,7 +2213,8 @@ static int page_articles(void)
 static int page_404(void)
 {
     char *body = htmc(
-        attr(main, htmc_strlit(class="flex h-full w-full items-center justify-center bg-pink-400"))(
+        attr(main, htmc_strlit(class="flex h-full w-full flex-col items-center justify-center gap-6 bg-pink-400 md:gap-8"))(
+            own(logo_svg("w-48 drop-shadow-[0_0px_3px_rgba(0,0,0,0.55)] md:w-64", "notfound404.dev logo")),
             attr(div, htmc_strlit(class="text-4xl font-black text-white md:text-5xl drop-shadow-[0_0px_3px_rgba(0,0,0,0.55)]"))(
                 "404 NOT FOUND :)"
             )

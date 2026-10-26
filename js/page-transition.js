@@ -7,7 +7,9 @@ const FADE_MS = Number(cover.dataset.fadeMs);
 // here to paint the first frame in the right colour. Later fades follow
 // the live theme, which the toggle may have changed.
 try { cover.classList.toggle('dark', localStorage.getItem('dark-theme') === 'true'); } catch {}
-const fadeIn = () => cover.classList.add('done');
+// `lifted` stays once set: what starts on the first lift (the logo's draw-on)
+// keeps running while a link fades the page back out, when `done` goes.
+const fadeIn = () => cover.classList.add('done', 'lifted');
 const fadeOut = () => {
   cover.classList.toggle('dark', document.documentElement.classList.contains('dark'));
   cover.classList.remove('done');
