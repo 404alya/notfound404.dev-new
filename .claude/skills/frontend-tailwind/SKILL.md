@@ -134,7 +134,7 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
   is only 22 px tall) with `-my-1.5`, so the nav box keeps its 56 px.
 - The home hero (`hero_title()`): a visually hidden (`sr-only`) h1 "Samet
   Alpdeger: full-stack developer", the big tagline `<p>` "Reallocation of
-  computer science.", and under it the same name line as a visible
+  computer science.", and under it "full-stack developer" as a visible
   `aria-hidden` `<p>` (Pixelify, `text-lg md:text-xl`), bottom-aligned in a
   `min-h-[10rem]` box pushed down by `mt-8 md:mt-12` (margin, since padding
   inside the bottom-aligned min-height box wouldn't move the text).

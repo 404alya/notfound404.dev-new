@@ -1259,8 +1259,8 @@ static char *hero_shader(void)
 }
 
 /* The h1 names the site's owner for search engines and screen readers but is
- * visually hidden; the big Pixelify tagline leads the hero and the same name
- * line is shown under it (aria-hidden, so it isn't read twice). */
+ * visually hidden; the big Pixelify tagline leads the hero, with the role
+ * shown under it (aria-hidden, since the h1 already says it). */
 static char *hero_title(void)
 {
     return htmc(
@@ -1272,7 +1272,7 @@ static char *hero_title(void)
                 "Reallocation of computer science."
             ),
             attr(p, htmc_strlit(aria-hidden="true" class="text-lg md:text-xl"))(
-                htmc_fmt("%s: full-stack developer", author_name)
+                "full-stack developer"
             )
         )
     );
