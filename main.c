@@ -244,8 +244,10 @@ static const char *const author_knows_about[] = {
     "Web development", "C", "Compilers", "React", "Next.js", "Node.js",
 };
 static const size_t author_knows_about_count = sizeof author_knows_about / sizeof author_knows_about[0];
-/* Home page <title> (with " | site_name") and og:title. */
+/* Home page og:title. */
 static const char home_title[] = "Samet Alpdeger · Full-Stack Developer";
+/* Home page <title>, after "site_name | ". */
+static const char home_title_suffix[] = "Full-Stack Developer";
 static const char articles_description[] =
     "Articles by Samet Alpdeger on web development, C, compilers, Linux and low-level programming.";
 /* Link-preview image of pages without a cover (path under assets/, 1200x630). */
@@ -2287,7 +2289,7 @@ static int page_home(void)
         // own(presence_widget(base))
     );
 
-    char *page_title = format_string("%s | %s", home_title, site_name);
+    char *page_title = format_string("%s | %s", site_name, home_title_suffix);
     int status = write_page("out/index.html", page_shell(page_title, base, "en", NULL, head_extra, body));
     free(page_title);
     return status;

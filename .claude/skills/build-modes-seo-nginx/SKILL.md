@@ -68,7 +68,8 @@ The build commands and how the mode is chosen are in `CLAUDE.md`.
 
 ## SEO
 
-- Titles: `<home_title> | notfound404.dev` on the home page,
+- Titles: `notfound404.dev | Full-Stack Developer` on the home page
+  (`home_title_suffix`),
   `Articles | notfound404.dev`, `<article title> | notfound404.dev`; never
   starting with "404" (only `404.html` is "404 NOT FOUND"). `og:title` is the
   plain title (`home_title` on the home page).
