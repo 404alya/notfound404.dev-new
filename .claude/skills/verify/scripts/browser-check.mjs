@@ -208,15 +208,18 @@ async function checkPages(mode, base) {
     await page.goto(list);
     await page.waitForTimeout(1500);
     const cards = [];
-    for (const card of await page.locator('[data-group], a[href*="article/"]').all()) {
+    // A card is a child of #articles-box; its link sits in the h2 title.
+    for (const card of await page.locator('#articles-box > *').all()) {
       cards.push({
         group: await card.getAttribute('data-group'),
         lang: await card.getAttribute('data-lang'),
         fallback: (await card.getAttribute('data-fallback')) !== null,
         visible: await card.isVisible(),
-        href: await card.getAttribute('href'),
+        href: await card.locator('h2 > a').getAttribute('href'),
       });
     }
+    const h1s = await page.locator('h1').count();
+    if (h1s !== 1) fail(`${mode} articles ${name}: ${h1s} h1 elements, expected 1`);
     const unique = [...new Map(cards.map((c) => [c.href ?? c.group + c.lang, c])).values()];
     const wrong = unique.filter((c) => (c.group ? c.visible !== expected(c) : !c.visible));
     const shown = unique.filter((c) => c.visible).map((c) => c.href);

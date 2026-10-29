@@ -65,10 +65,14 @@ typedef struct {
     const char *slug;        /* output file: out/article/<slug>.html */
     const char *lang;        /* ISO 639-1 code of this article, e.g. "en" */
     const char *title;       /* plain text, inserted as-is */
-    const char *description; /* shown on the articles list */
+    const char *description; /* excerpt shown on the articles list */
+    /* <meta name="description">, og:description, the JSON-LD description and
+     * the llms.txt summary: plain text, 120-160 characters. */
+    const char *summary;
     const char *cover;       /* image path under assets/, or NULL */
     const char *cover_alt;
     const char *published;   /* YYYY-MM-DD */
+    const char *updated;     /* YYYY-MM-DD of the last real edit, or NULL when never updated */
     const char *body_path;   /* pre-escaped HTML fragment, inserted verbatim except for headings */
     const ArticleTranslation *translations; /* ends with { 0 }; NULL when there are none */
 } Article;
@@ -86,6 +90,8 @@ static const Article articles[] = {
         .title = "How to run wasm in nextjs?",
         .description = "In this article, I explained how to create a basic Next.js application "
                        "that runs Web assembly (WASM) in a react client component.",
+        .summary = "Step-by-step guide to creating a basic Next.js app with create-next-app and Bun "
+                   "that loads and runs WebAssembly (WASM) inside a React client component.",
         .cover = NULL,
         .published = "2025-03-28",
         .body_path = "articles/how-to-run-wasm-in-nextjs.html",
@@ -95,6 +101,8 @@ static const Article articles[] = {
         .lang = "en",
         .title = "How to use UFW with docker",
         .description = "I explained how to use ufw with docker which is basic firewall for linux systems.",
+        .summary = "How to set up UFW on a Linux server so ports published by Docker containers "
+                   "can no longer bypass its rules, using DOCKER-USER and an Nginx example.",
         .cover = "images/article/how-to-use-ufw-with-docker.jpg",
         .cover_alt = "Photo by Stephen Radford — burning house",
         .published = "2025-07-07",
@@ -104,7 +112,9 @@ static const Article articles[] = {
       .slug = "mathematics-in-the-world-of-software",
       .lang = "en",
       .title = "Mathematics in the World of Software",
-      .description = "",
+      .description = "Why mathematics underlies everyday software, and why developers should keep learning it.",
+      .summary = "Why mathematics underlies everyday software, how abstraction hides it from "
+                 "modern developers, and why programmers should keep learning it.",
       .cover = "images/article/c-code-3d.png",
       .translations = (const ArticleTranslation[]) {
         {"tr", "yazilim-dunyasinda-matematik", false}, {0}
@@ -116,8 +126,10 @@ static const Article articles[] = {
     ,{
       .slug = "yazilim-dunyasinda-matematik",
       .lang = "tr",
-      .title = "Yazilim dunyasinda matematik",
+      .title = "Yazılım Dünyasında Matematik",
       .description = "Bir yazılımın doğasında elbette matematik vardır. Yazdığınız kodun önce assembly, ardından binary formatında çalışması, sayısız matematiksel koşul ve işlemin bir araya gelmesiyle...",
+      .summary = "Yazılımın temelindeki matematik, modern dillerin soyutlamalarının onu nasıl "
+                 "gizlediği ve yazılımcıların neden matematik öğrenmeye devam etmesi gerektiği.",
       .cover = "images/article/c-code-3d.png",
       .published = "2026-09-07",
       .body_path = "articles/yazilim-dunyasinda-matematik.html",
@@ -141,6 +153,7 @@ static const SocialLink social_links[] = {
     { "https://github.com/404alya", "github", "github", "size-7 md:size-9" },
     { "https://stackoverflow.com/users/22740544/404nnotfoundd", "stack-overflow", "stackoverflow", "size-8 md:size-10" },
     { "https://x.com/404nnotfounddd", "xtwitter", "twitter", "size-6 md:size-8" },
+    { "https://www.linkedin.com/in/samet-alpdeger-291a132b5/", "linkedin", "linkedin", "size-7 md:size-9" },
 };
 
 static const size_t social_link_count = sizeof social_links / sizeof social_links[0];
@@ -224,11 +237,20 @@ static const char site_description[] = "Samet Alpdeger, a self-taught full-stack
 static const char author_name[] = "Samet Alpdeger";
 static const char author_job_title[] = "Software Engineer";
 static const char author_email[] = "hi@notfound404.dev";
-/* Profiles listed in JSON-LD sameAs besides the web links in social_links[]. */
-static const char *const extra_profiles[] = {
-    "https://www.linkedin.com/in/samet-alpdeger-291a132b5/",
+/* Person image in the JSON-LD (path under assets/). */
+static const char author_image[] = "images/png/icon.png";
+/* JSON-LD knowsAbout of the Person node. */
+static const char *const author_knows_about[] = {
+    "Web development", "C", "Compilers", "React", "Next.js", "Node.js",
 };
-static const size_t extra_profile_count = sizeof extra_profiles / sizeof extra_profiles[0];
+static const size_t author_knows_about_count = sizeof author_knows_about / sizeof author_knows_about[0];
+/* Home page <title> (with " | site_name") and og:title. */
+static const char home_title[] = "Samet Alpdeger · Full-Stack Developer";
+static const char articles_description[] =
+    "Articles by Samet Alpdeger on web development, C, compilers, Linux and low-level programming.";
+/* Link-preview image of pages without a cover (path under assets/, 1200x630). */
+static const char share_image[] = "images/og/home.png";
+static const int share_image_width = 1200, share_image_height = 630;
 
 /* ------------------------------------------------------------------ */
 /* Build mode: ./output.o --dev (the default) or --prod               */
@@ -809,6 +831,27 @@ static char *article_url(const char *slug)
     return format_string("%sarticle/%s.html", site_url, slug);
 }
 
+/* Date of the article's last edit (dateModified, the sitemap's lastmod):
+ * updated when set, else the publication date. Exits on an updated value
+ * that isn't YYYY-MM-DD (published is checked by published_date_text()). */
+static const char *article_modified(const Article *entry)
+{
+    if (!entry->updated)
+        return entry->published;
+    int year, month, day, length = 0;
+    if (sscanf(entry->updated, "%4d-%2d-%2d%n", &year, &month, &day, &length) != 3 || length != 10 ||
+        entry->updated[length])
+        die_msg("article \"%s\": updated must be YYYY-MM-DD", entry->slug);
+    return entry->updated;
+}
+
+/* The article's link-preview image under assets/: its cover, else the
+ * site's share image. */
+static const char *article_image(const Article *entry)
+{
+    return entry->cover ? entry->cover : share_image;
+}
+
 /* schema.org BlogPosting node for an article page, built only from its
  * articles[] entry and the site constants. Every value goes through the JSON
  * escaper, since article text is data. Linked to the WebSite and Person
@@ -825,14 +868,13 @@ static char *article_json_ld(const Article *entry)
     json_member(&out, "url", url);
     json_member(&out, "mainEntityOfPage", url);
     json_member(&out, "headline", entry->title);
-    json_member(&out, "description", entry->description);
+    json_member(&out, "description", entry->summary);
     json_member(&out, "datePublished", entry->published);
+    json_member(&out, "dateModified", article_modified(entry));
     json_member(&out, "inLanguage", entry->lang);
-    if (entry->cover) {
-        char *image = format_string("%sassets/%s", site_url, entry->cover);
-        json_member(&out, "image", image);
-        free(image);
-    }
+    char *image = format_string("%sassets/%s", site_url, article_image(entry));
+    json_member(&out, "image", image);
+    free(image);
     json_member_ref(&out, "author", person_id);
     json_member_ref(&out, "publisher", person_id);
     json_member_ref(&out, "isPartOf", website_id);
@@ -886,15 +928,16 @@ static char *json_ld(char *extra_node)
                 "      \"url\": \"%s\",\n"
                 "      \"jobTitle\": \"%s\",\n"
                 "      \"email\": \"mailto:%s\",\n"
-                "      \"sameAs\": [",
+                "      \"image\": \"%sassets/%s\",\n"
+                "      \"knowsAbout\": [",
                 site_url, site_url, site_name, site_description, site_url,
-                site_url, author_name, site_url, author_job_title, author_email),
+                site_url, author_name, site_url, author_job_title, author_email,
+                site_url, author_image),
             htmc_ccode(
+                for (size_t n = 0; n < author_knows_about_count; n++)
+                    htmc_yield(htmc_fmt("%s\"%s\"", n ? ", " : "", author_knows_about[n]));
+                htmc_yield("],\n      \"sameAs\": [");
                 const char *separator = "\n        ";
-                for (size_t n = 0; n < extra_profile_count; n++) {
-                    htmc_yield(htmc_fmt("%s\"%s\"", separator, extra_profiles[n]));
-                    separator = ",\n        ";
-                }
                 for (size_t n = 0; n < social_link_count; n++) {
                     if (strncmp(social_links[n].href, "http", 4) != 0)
                         continue; /* mailto: is already the email field */
@@ -931,8 +974,9 @@ static char *head_common(const char *page_title, const char *base, char *graph_n
 /* Canonical URL and link-preview tags (Open Graph, Twitter card) for a page.
  * Prod only (see production): they name the public URL, and dev output stays
  * as it was. path is the page's path under site_url ("" for the home page);
- * description and image (a path under assets/) may be NULL or empty. Text is
- * data, so it is escaped.
+ * description may be NULL or empty; image is a path under assets/, NULL for
+ * the site's share image (whose size is known, so it gets og:image:width and
+ * og:image:height). Text is data, so it is escaped.
  *
  * The tags are formatted directly rather than with htmc's meta()/link():
  * htmc_make_tag_with_attrs() (deps/htmc, not ours to change) writes the
@@ -942,14 +986,17 @@ static char *share_meta(const char *path, const char *og_type, const char *share
                         const char *description, const char *image)
 {
     char *url = format_string("%s%s", site_url, path);
-    char *image_url = format_string("%sassets/%s", site_url, image ? image : "images/png/icon.png");
+    char *image_url = format_string("%sassets/%s", site_url, image ? image : share_image);
     char *title_attr = escape_attr(share_title);
     char *description_attr = escape_attr(description ? description : "");
     char *description_tag = *description_attr
         ? format_string("<meta property=\"og:description\" content=\"%s\">", description_attr)
         : format_string("%s", "");
-    /* A cover gets the large preview; the fallback icon is small and square. */
-    const char *card = image ? "summary_large_image" : "summary";
+    char *image_size_tags = image && strcmp(image, share_image) != 0
+        ? format_string("%s", "")
+        : format_string("<meta property=\"og:image:width\" content=\"%d\">"
+                        "<meta property=\"og:image:height\" content=\"%d\">",
+                        share_image_width, share_image_height);
 
     char *tags = format_string(
         "<link rel=\"canonical\" href=\"%s\">"
@@ -959,15 +1006,27 @@ static char *share_meta(const char *path, const char *og_type, const char *share
         "%s"
         "<meta property=\"og:url\" content=\"%s\">"
         "<meta property=\"og:image\" content=\"%s\">"
-        "<meta name=\"twitter:card\" content=\"%s\">",
-        url, og_type, site_name, title_attr, description_tag, url, image_url, card);
+        "%s"
+        "<meta name=\"twitter:card\" content=\"summary_large_image\">",
+        url, og_type, site_name, title_attr, description_tag, url, image_url, image_size_tags);
 
     free(url);
     free(image_url);
     free(title_attr);
     free(description_attr);
     free(description_tag);
+    free(image_size_tags);
     return tags;
+}
+
+/* <meta name="description">, formatted directly like share_meta()'s tags
+ * (htmc void-tag bug; the length varies with the data). Text is escaped. */
+static char *description_meta(const char *description)
+{
+    char *description_attr = escape_attr(description);
+    char *tag = format_string("<meta name=\"description\" content=\"%s\">", description_attr);
+    free(description_attr);
+    return tag;
 }
 
 /* Duration of the page fade, shared by the CSS transition and the script. */
@@ -1142,11 +1201,12 @@ static char *navbar(const char *base)
         attr(div, htmc_strlit(class="pointer-events-none fixed top-0 z-[45] flex w-full justify-center p-2"))(
             attr(nav, htmc_strlit(id="main-nav"
                                   class="pointer-events-auto relative top-0 flex h-full w-full items-center justify-between rounded-lg bg-[#00000071] px-4 py-3 shadow-[0_0px_20px_0.5px_rgba(0,0,0,0.3)] drop-shadow-md backdrop-blur-xs transition-transform duration-300 ease-[ease] data-[hidden]:-translate-y-24 md:w-[50rem] md:bg-[#00000061] md:backdrop-blur-md"))(
+                /* At least 44x44 px to tap (the logo is 22 px tall); the
+                 * negative margin keeps the nav box at its 56 px height. */
                 attr(a, htmc_fmt("href=\"%s\"", home),
-                     htmc_strlit(class="cursor-pointer text-[#ffffff7e] transition-colors hover:text-white font-semibold text-base md:text-lg"))(
-                  own(logo_svg("w-14 opacity-90 transition-opacity duration-300 hover:opacity-60", "logo"))
-
-      ),
+                     htmc_strlit(class="-my-1.5 inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center text-[#ffffff7e] transition-colors hover:text-white font-semibold text-base md:text-lg"))(
+                    own(logo_svg("w-14 opacity-90 transition-opacity duration-300 hover:opacity-60", "logo"))
+                ),
                 attr(div, htmc_strlit(class="hidden flex-row items-center gap-5 min-[600px]:flex"))(
                   own(nav_links(base, "text-[#ffffff7e] transition-colors hover:text-white text-base md:text-lg")),
                 ),
@@ -1198,19 +1258,32 @@ static char *hero_shader(void)
     );
 }
 
+/* The h1 names the site's owner for search engines and screen readers but is
+ * visually hidden; the big Pixelify tagline leads the hero and the same name
+ * line is shown under it (aria-hidden, so it isn't read twice). */
 static char *hero_title(void)
 {
     return htmc(
-        attr(h1, htmc_strlit(class="relative z-10 flex min-h-[10rem] md:max-w-[35rem] items-end text-center font-pixelify text-4xl sm:text-5xl sm:leading-10 max-w-[25rem] px-3 text-white md:text-6xl md:leading-12"))(
-            "Reallocation of computer science."
+        attr(div, htmc_strlit(class="relative z-10 mt-8 flex min-h-[10rem] flex-col items-center justify-end gap-3 px-3 text-center font-pixelify text-white md:mt-12"))(
+            attr(h1, htmc_strlit(class="sr-only"))(
+                htmc_fmt("%s: full-stack developer", author_name)
+            ),
+            attr(p, htmc_strlit(class="max-w-[25rem] text-4xl sm:text-5xl sm:leading-10 md:max-w-[35rem] md:text-6xl md:leading-12"))(
+                "Reallocation of computer science."
+            ),
+            attr(p, htmc_strlit(aria-hidden="true" class="text-lg md:text-xl"))(
+                htmc_fmt("%s: full-stack developer", author_name)
+            )
         )
     );
 }
 
+/* Web profiles carry rel="me", which ties them to this site as the same
+ * person's (IndieWeb, Mastodon verification). */
 static char *social_link(const SocialLink *link, const char *base)
 {
     const char *target = strncmp(link->href, "http", 4) == 0
-        ? " target=\"_blank\" rel=\"noopener noreferrer\""
+        ? " target=\"_blank\" rel=\"me noopener noreferrer\""
         : "";
 
     return htmc(
@@ -1758,20 +1831,24 @@ static ArticleGroup article_group(const Article *entry)
 
 /* A translated article's card carries its group and language for
  * js/article-lang.js; every card but the group's fallback starts hidden, so
- * without JS the list shows one card per group. */
+ * without JS the list shows one card per group. The title is an h2 holding
+ * the link, whose ::after covers the card so all of it stays clickable. */
 static char *article_card(const Article *entry, const char *base)
 {
     ArticleGroup group = article_group(entry);
     char *group_attrs = group.size > 1
-        ? format_string(" data-group=\"%s\" data-lang=\"%s\"%s", group.first->slug, entry->lang,
+        ? format_string("data-group=\"%s\" data-lang=\"%s\"%s", group.first->slug, entry->lang,
                         entry == group.fallback ? " data-fallback" : " data-hidden")
         : format_string("%s", "");
 
     char *card = htmc(
-        attr(a, htmc_fmt("href=\"%sarticle/%s.html\"%s", base, entry->slug, group_attrs),
-             htmc_strlit(class="flex cursor-pointer flex-col gap-3 rounded-md bg-gradient-to-tr from-[#97004b29] to-[#9b045029] p-3 hover:bg-gradient-to-r hover:from-[#97004b54] hover:to-[#751a4829] hover:duration-300 data-[hidden]:hidden"))(
+        attr(div, htmc_fmt("%s", group_attrs),
+             htmc_strlit(class="relative flex cursor-pointer flex-col gap-3 rounded-md bg-gradient-to-tr from-[#97004b29] to-[#9b045029] p-3 hover:bg-gradient-to-r hover:from-[#97004b54] hover:to-[#751a4829] hover:duration-300 data-[hidden]:hidden"))(
             attr(div, htmc_strlit(class="flex flex-col gap-4"))(
-                attr(div, htmc_strlit(class="text-xl font-bold md:text-2xl"))(htmc_fmt("%s", entry->title)),
+                attr(h2, htmc_strlit(class="text-xl font-bold md:text-2xl"))(
+                    attr(a, htmc_fmt("href=\"%sarticle/%s.html\"", base, entry->slug),
+                         htmc_strlit(class="cursor-pointer after:absolute after:inset-0"))(htmc_fmt("%s", entry->title))
+                ),
                 attr(p, htmc_strlit(class="text-base md:text-lg"))(htmc_fmt("%s", entry->description))
             ),
             attr(div, htmc_strlit(class="flex flex-row gap-2 text-base md:text-lg"))(div(htmc_fmt("%s", entry->published)))
@@ -1857,9 +1934,17 @@ static void check_translations(void)
 }
 
 /* <link rel="alternate" hreflang> for the article itself and each translation,
- * so search engines can pair the language versions. */
+ * so search engines can pair the language versions, plus x-default (the
+ * group's fallback, the version the articles list shows by default) when
+ * there are translations. */
 static char *alternate_links(const Article *entry)
 {
+    /* Formatted directly: htmc void-tag bug, see share_meta(). */
+    char *x_default = has_translations(entry)
+        ? format_string("<link rel=\"alternate\" hreflang=\"x-default\" href=\"%sarticle/%s.html\">",
+                        site_url, article_group(entry).fallback->slug)
+        : format_string("%s", "");
+
     return htmc(
         link(htmc_strlit(rel="alternate"),
              htmc_fmt("hreflang=\"%s\" href=\"%sarticle/%s.html\"", entry->lang, site_url, entry->slug)),
@@ -1869,7 +1954,8 @@ static char *alternate_links(const Article *entry)
                                 htmc_fmt("hreflang=\"%s\" href=\"%sarticle/%s.html\"",
                                          translation->lang, site_url, translation->slug)));
             }
-        )
+        ),
+        own(x_default)
     );
 }
 
@@ -2167,10 +2253,10 @@ static int page_home(void)
 {
     const char *base = page_base(0);
     char *head_extra = htmc(
-        meta(htmc_strlit(name="description"), htmc_fmt("content=\"%s\"", site_description)),
+        own(description_meta(site_description)),
         own(prose_styles()),
         own(heading_link_styles()),
-        production ? own(share_meta("", "website", site_name, site_description, NULL)) : ""
+        production ? own(share_meta("", "website", home_title, site_description, NULL)) : ""
     );
 
     char *body = htmc(
@@ -2201,7 +2287,10 @@ static int page_home(void)
         // own(presence_widget(base))
     );
 
-    return write_page("out/index.html", page_shell("notfound404.dev", base, "en", NULL, head_extra, body));
+    char *page_title = format_string("%s | %s", home_title, site_name);
+    int status = write_page("out/index.html", page_shell(page_title, base, "en", NULL, head_extra, body));
+    free(page_title);
+    return status;
 }
 
 /* qsort order for the articles list: newest first. YYYY-MM-DD dates compare
@@ -2215,30 +2304,46 @@ static int compare_newest_first(const void *lhs, const void *rhs)
     return order != 0 ? order : strcmp(left->slug, right->slug);
 }
 
-static int page_articles(void)
+/* Heap array of pointers into articles[], newest first, so the source array
+ * can stay in any order. The caller frees it. */
+static const Article **sorted_articles(void)
 {
-    const char *base = page_base(0);
-    /* Sorted view of articles[], so the source array can stay in any order. */
     const Article **sorted = malloc((article_count ? article_count : 1) * sizeof *sorted);
     if (!sorted)
         die("malloc");
     for (size_t n = 0; n < article_count; n++)
         sorted[n] = &articles[n];
     qsort(sorted, article_count, sizeof *sorted, compare_newest_first);
+    return sorted;
+}
+
+static int page_articles(void)
+{
+    const char *base = page_base(0);
+    const Article **sorted = sorted_articles();
 
     char *body = htmc(
         own(cursor_canvas()),
         own(navbar(base)),
         attr(div, htmc_strlit(id="articles-scroll" data-scroll-root class="h-full w-full overflow-y-scroll bg-[#bb2f66] [scrollbar-width:none]"))(
             attr(div, htmc_strlit(class="flex w-full flex-col items-center justify-center gap-4 pb-5 pt-[5rem]"))(
+                attr(h1, htmc_strlit(class="px-2 text-center text-balance font-pixelify text-2xl text-white xxs:w-[90%] md:w-[40rem] md:text-3xl"))(
+                    "Articles on web development, C and low-level programming"
+                ),
                 own(articles_list(sorted, base))
             )
         )
     );
     free(sorted);
 
-    char *head_extra = production ? share_meta("articles.html", "website", "Articles", site_description, NULL) : NULL;
-    return write_page("out/articles.html", page_shell("404 - Articles", base, "en", NULL, head_extra, body));
+    char *head_extra = htmc(
+        own(description_meta(articles_description)),
+        production ? own(share_meta("articles.html", "website", "Articles", articles_description, NULL)) : ""
+    );
+    char *page_title = format_string("Articles | %s", site_name);
+    int status = write_page("out/articles.html", page_shell(page_title, base, "en", NULL, head_extra, body));
+    free(page_title);
+    return status;
 }
 
 static int page_404(void)
@@ -2265,14 +2370,15 @@ static int page_article(const Article *entry)
 {
     const char *base = page_base(1);
     char *path = format_string("out/article/%s.html", entry->slug);
-    char *page_title = format_string("404 - %s", entry->title);
+    char *page_title = format_string("%s | %s", entry->title, site_name);
     char *page_path = format_string("article/%s.html", entry->slug);
 
     char *head_extra = htmc(
+        own(description_meta(entry->summary)),
         own(prose_styles()),
         own(heading_link_styles()),
         own(alternate_links(entry)),
-        production ? own(share_meta(page_path, "article", entry->title, entry->description, entry->cover)) : ""
+        production ? own(share_meta(page_path, "article", entry->title, entry->summary, entry->cover)) : ""
     );
     free(page_path);
 
@@ -2321,6 +2427,100 @@ static int write_nginx_conf(void)
     return write_page("out/nginx.conf", filled);
 }
 
+/* ------------------------------------------------------------------ */
+/* Files for crawlers: sitemap.xml, robots.txt, llms.txt              */
+/* ------------------------------------------------------------------ */
+
+/* Appends one <xhtml:link rel="alternate"> of a sitemap <url>. */
+static void sitemap_alternate(StrBuf *out, const char *hreflang, const char *slug)
+{
+    char *line = format_string("    <xhtml:link rel=\"alternate\" hreflang=\"%s\" href=\"%sarticle/%s.html\"/>\n",
+                               hreflang, site_url, slug);
+    strbuf_append(out, line);
+    free(line);
+}
+
+/* Appends a sitemap <url>; lastmod may be NULL. */
+static void sitemap_url_open(StrBuf *out, const char *loc, const char *lastmod)
+{
+    char *lines = lastmod
+        ? format_string("  <url>\n    <loc>%s</loc>\n    <lastmod>%s</lastmod>\n", loc, lastmod)
+        : format_string("  <url>\n    <loc>%s</loc>\n", loc);
+    strbuf_append(out, lines);
+    free(lines);
+}
+
+/* out/sitemap.xml: the home page, the articles list (lastmod: the newest
+ * article edit) and every article (lastmod: article_modified()). Translated
+ * articles list their language versions and x-default, like
+ * alternate_links(). Slugs and dates are URL- and XML-safe as they are. */
+static int write_sitemap(void)
+{
+    const char *newest = NULL;
+    for (size_t n = 0; n < article_count; n++)
+        if (!newest || strcmp(article_modified(&articles[n]), newest) > 0)
+            newest = article_modified(&articles[n]);
+
+    StrBuf out = strbuf_new();
+    strbuf_append(&out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                        "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"\n"
+                        "        xmlns:xhtml=\"http://www.w3.org/1999/xhtml\">\n");
+    sitemap_url_open(&out, site_url, NULL);
+    strbuf_append(&out, "  </url>\n");
+    char *articles_page = format_string("%sarticles.html", site_url);
+    sitemap_url_open(&out, articles_page, newest);
+    strbuf_append(&out, "  </url>\n");
+    free(articles_page);
+
+    const Article **sorted = sorted_articles();
+    for (size_t n = 0; n < article_count; n++) {
+        const Article *entry = sorted[n];
+        char *url = article_url(entry->slug);
+        sitemap_url_open(&out, url, article_modified(entry));
+        free(url);
+        if (has_translations(entry)) {
+            sitemap_alternate(&out, entry->lang, entry->slug);
+            for (const ArticleTranslation *translation = entry->translations; translation->slug; translation++)
+                sitemap_alternate(&out, translation->lang, translation->slug);
+            sitemap_alternate(&out, "x-default", article_group(entry).fallback->slug);
+        }
+        strbuf_append(&out, "  </url>\n");
+    }
+    free(sorted);
+    strbuf_append(&out, "</urlset>\n");
+    return write_page("out/sitemap.xml", out.data);
+}
+
+/* out/robots.txt. Cloudflare's managed robots.txt, when on, adds its content
+ * signals above this file's rules. */
+static int write_robots_txt(void)
+{
+    return write_page("out/robots.txt", format_string("User-agent: *\nAllow: /\n\nSitemap: %ssitemap.xml\n", site_url));
+}
+
+/* out/llms.txt (llmstxt.org): the site in one line, then every article,
+ * newest first, with its summary. */
+static int write_llms_txt(void)
+{
+    StrBuf out = strbuf_new();
+    char *intro = format_string("# %s\n\n> Personal site of %s, a self-taught full-stack developer writing about "
+                                "web development, C, compilers and low-level programming.\n\n## Articles\n\n",
+                                site_name, author_name);
+    strbuf_append(&out, intro);
+    free(intro);
+
+    const Article **sorted = sorted_articles();
+    for (size_t n = 0; n < article_count; n++) {
+        char *url = article_url(sorted[n]->slug);
+        char *line = format_string("- [%s](%s): %s\n", sorted[n]->title, url, sorted[n]->summary);
+        strbuf_append(&out, line);
+        free(line);
+        free(url);
+    }
+    free(sorted);
+    return write_page("out/llms.txt", out.data);
+}
+
 /* `./output.o [--dev | --prod]`: dev (the default) unless --prod is given. */
 static void parse_args(int argc, char **argv)
 {
@@ -2349,6 +2549,9 @@ int main(int argc, char **argv)
     status |= page_404();
     for (size_t n = 0; n < article_count; n++)
         status |= page_article(&articles[n]);
+    status |= write_sitemap();
+    status |= write_robots_txt();
+    status |= write_llms_txt();
 
     /* Dev never writes the server config, and drops one left by a prod build
      * so it isn't served from out/ by mistake. */

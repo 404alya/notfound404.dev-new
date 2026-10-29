@@ -30,10 +30,12 @@ The build commands and how the mode is chosen are in `CLAUDE.md`.
   engines and link previews read (canonical, `og:`, hreflang, JSON-LD), so the
   pages don't depend on the domain for anything else.
 - `share_meta(path, og_type, title, description, image)`: canonical +
-  `og:type/site_name/title/description/url/image` + `twitter:card`. Text is
+  `og:type/site_name/title/description/url/image` + `twitter:card`
+  (always `summary_large_image`). Text is
   escaped with `escape_attr()`. `og:description` is left out when the
-  description is empty. `image` is the article cover (`summary_large_image`)
-  or the site icon (`summary`). `404.html` gets none: it stands in for any
+  description is empty. `image` is the article cover, or `NULL` for
+  `share_image` (`assets/images/og/home.png`), which also gets
+  `og:image:width`/`height` (1200×630; covers have no size tags). `404.html` gets none: it stands in for any
   missing URL. Its `meta`/`link` tags are formatted with `format_string()`
   because of the htmc void-tag bug (see the `htmc-c-rules` skill).
 
@@ -66,14 +68,35 @@ The build commands and how the mode is chosen are in `CLAUDE.md`.
 
 ## SEO
 
+- Titles: `<home_title> | notfound404.dev` on the home page,
+  `Articles | notfound404.dev`, `<article title> | notfound404.dev`; never
+  starting with "404" (only `404.html` is "404 NOT FOUND"). `og:title` is the
+  plain title (`home_title` on the home page).
+- `<meta name="description">` (`description_meta()`, formatted directly
+  because of the void-tag bug) on the home page (`site_description`), the
+  articles list (`articles_description`) and every article (its `summary`),
+  in **both** modes; `og:description` uses the same text in prod.
+- Crawler files, written in both modes (they hold only absolute URLs):
+  `write_sitemap()` (home, articles list with the newest edit as `lastmod`,
+  every article with `article_modified()`; translated articles carry
+  `xhtml:link` alternates for each language and `x-default`),
+  `write_robots_txt()` (`Allow: /` plus the sitemap; Cloudflare's managed
+  robots.txt adds its content signals above it) and `write_llms_txt()`.
+  `config/nginx.conf` serves `xml` as `application/xml`.
+- hreflang: `alternate_links()` adds `x-default` (the translation group's
+  fallback, see `article_group()`) on articles with translations.
+
 - `json_ld(extra_node)` in `head_common()` emits one schema.org `@graph`
-  (WebSite + Person) on every page. It must stay valid JSON. Edit the
+  (WebSite + Person, with `image` from `author_image` and `knowsAbout` from
+  `author_knows_about[]`) on every page. It must stay valid JSON. Edit the
   constants, not the template. With `extra_node == NULL` the output is
   byte-for-byte unchanged.
 - Article pages pass `article_json_ld(entry)` as a third node: a
   `BlogPosting` with `@id` / `url` / `mainEntityOfPage`
   (`<site_url>article/<slug>.html`), `headline`, `description`,
-  `datePublished`, `inLanguage`, `image` (only with a cover), `author` /
+  `datePublished`, `dateModified` (`article_modified()`: `updated`, else
+  `published`), `inLanguage`, `image` (`article_image()`: the cover, else
+  `share_image`), `description` (the `summary`), `author` /
   `publisher` (`#person`), `isPartOf` (`#website`) and `workTranslation`
   (translations' `@id`s, only when there are any). It's built only from the
   `articles[]` entry and the `site_*` constants.

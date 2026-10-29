@@ -12,6 +12,12 @@ description: How articles work in this site generator. Use when adding, editing,
   stay in any order: `page_articles()` sorts a `const Article *` array with
   `qsort` (`compare_newest_first()`: `published` descending, ties by slug).
   Never reorder the source array by hand for display.
+- Text fields: `description` is the excerpt shown on the articles list;
+  `summary` (required, plain text, 120–160 characters) is the meta
+  description, `og:description`, JSON-LD `description` and llms.txt line.
+  `published` is `YYYY-MM-DD`; set the optional `updated` (`YYYY-MM-DD`) only
+  after a real edit: it becomes `dateModified` and the sitemap `lastmod`.
+  Titles use proper characters (Turkish ones included); the slug stays ASCII.
 - A new article cover goes in `assets/images/<type>/` along with its entry
   (see "Self-contained assets" in `CLAUDE.md`).
 
@@ -85,6 +91,9 @@ description: How articles work in this site generator. Use when adding, editing,
   followed transitively); `article_group()` computes it from `articles[]`.
   Its id is the alphabetically first slug; its *fallback* is the `en` article,
   else the source (no `AI_used = true` link points at it), else the first slug.
+  A card is a `div` whose title is `<h2><a href>…</a></h2>`; the link's
+  `after:absolute after:inset-0` stretches it over the card, so the whole card
+  stays clickable (the page's only h1 sits above the list).
   `article_card()` gives every grouped card `data-group` and `data-lang`, the
   fallback `data-fallback` and every other one `data-hidden` (styled by
   `data-[hidden]:hidden`). Articles without translations get none of these and

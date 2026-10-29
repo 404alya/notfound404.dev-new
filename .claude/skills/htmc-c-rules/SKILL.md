@@ -88,6 +88,7 @@ modify `deps/`) are in `CLAUDE.md`. This skill holds the details.
   | `js/page-transition.js` | the page-transition cover's behaviour (`page_transition()`): lift after load (adds `done`, and `lifted`, which is never removed), fade-out on internal links (removes `done`), same-page anchors, bfcache; reads the fade duration from the cover's `data-fade-ms`, which C sets from `page_fade_ms` (also used by the cover's CSS transition) |
   | `articles/<slug>.html` | article bodies |
   | `assets/` | every font, image, icon and video the site uses (copied to `out/assets/`) |
+  | `assets/images/og/home.png` | 1200×630 link-preview image (`share_image`) of pages without a cover; regenerate it at that size if the name or look changes |
   | `js/gameproject2-slider.js` | the gameproject2 slider (`gameproject2_slider()`): moves `data-active` between slides, arrows and left/right keys wrap around, pauses hidden videos and plays the shown one, updates the screen-reader status; inlined only when there are 2+ slides |
   | `assets/video/gameproject2.webm` | the gameproject2 slider's first slide (currently a placeholder test pattern; replace the file with a gameplay walk, keep the name) |
   | `assets/images/gameproject2/` | the gameproject2 slider's images: `screenshot-1.webp` … `screenshot-4.webp`, 1280×720 stills rendered by the game (canyon, hall, stairs, tower), in route order |
@@ -117,8 +118,10 @@ modify `deps/`) are in `CLAUDE.md`. This skill holds the details.
   the card an external link to the company; the duration is
   computed at runtime by `js/experience.js`, never hardcoded, and refreshes
   itself for a current job); social profiles
-  go in `social_links[]` or `extra_profiles[]`; site identity goes in the `site_*` / `author_*` constants
-  (they feed the meta description and the JSON-LD).
+  go in `social_links[]` (shown in the hero row; web profiles get
+  `rel="me"` and are the JSON-LD `sameAs`); site identity goes in the `site_*` / `author_*`
+  constants plus `home_title`, `articles_description` and `share_image`
+  (they feed the titles, meta descriptions, share tags and the JSON-LD).
 - Readable C: short functions, `const char *` for borrowed inputs, minimal new
   macros (only `own()` exists beyond htmc), and comments that explain *why*.
 

@@ -130,6 +130,14 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
 ## Navbar
 
 - The logo links to `home_url(base)`: `<base>index.html` in dev, `/` in prod.
+  The link is `inline-flex min-h-11 min-w-11` (a 44 px tap target; the logo
+  is only 22 px tall) with `-my-1.5`, so the nav box keeps its 56 px.
+- The home hero (`hero_title()`): a visually hidden (`sr-only`) h1 "Samet
+  Alpdeger: full-stack developer", the big tagline `<p>` "Reallocation of
+  computer science.", and under it the same name line as a visible
+  `aria-hidden` `<p>` (Pixelify, `text-lg md:text-xl`), bottom-aligned in a
+  `min-h-[10rem]` box pushed down by `mt-8 md:mt-12` (margin, since padding
+  inside the bottom-aligned min-height box wouldn't move the text).
 - `nav_links(base, link_class)` emits "Articles" (`<base>articles.html`) and
   "Who am I?" (`<home_url>#who-am-i`, the id from
   `home_heading_id(HOME_ABOUT)`, so it follows the heading if the text

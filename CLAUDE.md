@@ -39,6 +39,9 @@ out/index.html
 out/articles.html
 out/404.html
 out/article/<slug>.html   (one per articles[] entry, translations included)
+out/sitemap.xml           (write_sitemap(), absolute URLs, both modes)
+out/robots.txt            (write_robots_txt(), points at the sitemap)
+out/llms.txt              (write_llms_txt(), llmstxt.org format)
 out/assets/...            (copy of assets/)
 out/nginx.conf            (prod builds only; a dev build deletes it)
 ```
