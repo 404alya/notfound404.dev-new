@@ -99,7 +99,9 @@ Drive with Playwright and Chromium; see "Playwright notes" below.
 - in prod, also `/`, `/articles`, `/article/<slug>` and a deep missing URL
   (`/a/b/c`): the 404 page there loads its fonts and assets;
 - interactive pieces work: theme toggle (cross-fades over 400 ms; instant
-  with reduced motion) and saved preference, mobile menu,
+  with reduced motion) and saved preference; with nothing saved the theme
+  follows the device (`colorScheme` in Playwright, also when it changes
+  live), and a saved choice wins over it, mobile menu,
   nav hide/show on scroll, progress bar, skills tooltip (hover, desktop),
   skill drawer (tap with touch emulation: opens from the bottom, closes on the
   backdrop, the × button, Escape and a swipe down; a short pull springs back;

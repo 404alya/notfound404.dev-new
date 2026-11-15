@@ -68,6 +68,16 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
 
 ## Theme switch
 
+- Which theme: a choice saved by the toggle (`localStorage['dark-theme']`,
+  `"true"`/`"false"`) wins; with none, the device's
+  `prefers-color-scheme`, followed live while the page is open
+  (`applyTheme()` in `js/theme.js`). `js/page-transition.js` applies the
+  same rule for the cover's first paint.
+- Light mode is dimmed to about 92% brightness (RGB scaled, hues kept):
+  home background `#ba77df` with `#d99cd7`/`#d28bcf` gradients, the hero
+  glow `#eb9dad`/`#da97a4` with a `#ffffffb8` highlight (CSS fallback and
+  `THEMES.light` in `js/hero-shader.js` must match), article background
+  `#dfddc3`, cover `#ebebeb`. Keep new light-mode surfaces in that range.
 - `toggleTheme()` in `js/theme.js` flips `<html class="dark">`
   inside `document.startViewTransition()`, so the whole page cross-fades
   between the themes (400 ms, set on `::view-transition-group(root)` in
@@ -79,9 +89,9 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
 ## Loading, transitions and flashing
 
 - `page_transition()` is a full-screen cover (markup and plain CSS in C, behaviour
-  in `js/page-transition.js`): white, or `#202020` in the dark
-  theme. Its own script reads the saved theme (`localStorage['dark-theme']`)
-  for the first paint, since `theme.js` applies it only at DOMContentLoaded,
+  in `js/page-transition.js`): `#ebebeb`, or `#202020` in the dark
+  theme. Its own script works out the theme (saved choice, else device
+  preference) for the first paint, since `theme.js` applies it only at DOMContentLoaded,
   and re-syncs with `<html class="dark">` before each fade-out. It lifts (the page fades
   in) after `load`, once Tailwind CSS is applied, registered promises have
   settled, fonts are ready and running CSS transitions have finished, or after

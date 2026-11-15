@@ -204,7 +204,7 @@ void main() {
 // (the first three are the CSS fallback's), and the warm and cool tints the
 // colour flow drifts towards.
 const THEMES = {
-  light: { a: 0xffabbc, b: 0xeda4b2, white: 0xd3 / 255, fx: 1.0, warm: 0xffc3a6, cool: 0xd8b2ff },
+  light: { a: 0xeb9dad, b: 0xda97a4, white: 0xb8 / 255, fx: 1.0, warm: 0xebb399, cool: 0xc7a4eb },
   dark: { a: 0xcf6e81, b: 0xcf7789, white: 0x40 / 255, fx: 0.7, warm: 0xd98a76, cool: 0xa47ad8 },
 };
 const rgb = hex => [hex >> 16, (hex >> 8) & 0xff, hex & 0xff].map(c => c / 255);

@@ -3,10 +3,15 @@
 const cover = document.getElementById('page-transition');
 const FADE_MS = Number(cover.dataset.fadeMs);
 
-// theme.js applies the saved theme only at DOMContentLoaded, so read it
-// here to paint the first frame in the right colour. Later fades follow
-// the live theme, which the toggle may have changed.
-try { cover.classList.toggle('dark', localStorage.getItem('dark-theme') === 'true'); } catch {}
+// theme.js applies the theme only at DOMContentLoaded, so work it out here
+// too (the same rule: a saved toggle choice, else the device preference) to
+// paint the first frame in the right colour. Later fades follow the live
+// theme, which the toggle or the device setting may have changed.
+{
+  let saved = null;
+  try { saved = localStorage.getItem('dark-theme'); } catch {}
+  cover.classList.toggle('dark', saved === null ? matchMedia('(prefers-color-scheme: dark)').matches : saved === 'true');
+}
 // `lifted` stays once set: what starts on the first lift (the logo's draw-on)
 // keeps running while a link fades the page back out, when `done` goes.
 const fadeIn = () => cover.classList.add('done', 'lifted');

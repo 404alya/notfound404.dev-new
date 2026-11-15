@@ -1058,7 +1058,7 @@ static char *page_transition(void)
     return htmc(
         style(
             htmc_fmt(
-                "\n#page-transition { position: fixed; inset: 0; z-index: 2147483647; background: #fff;"
+                "\n#page-transition { position: fixed; inset: 0; z-index: 2147483647; background: #ebebeb;"
                 " transition: opacity %dms ease; }\n"
                 "#page-transition.dark { background: #202020; }\n"
                 "#page-transition.done { opacity: 0; pointer-events: none; }\n",
@@ -1242,7 +1242,7 @@ static char *background_layer(void)
 {
     return htmc(
         attr(div, htmc_strlit(id="bg-layer"
-       class="pointer-events-none absolute left-0 top-0 z-0 h-full w-full bg-[#ca81f2] bg-[image:radial-gradient(at_20%_20%,hsl(301.9,63.4%,79.4%)_0px,transparent_50%),radial-gradient(at_40%_20%,hsl(302.4,59.4%,74.5%)_0px,transparent_50%)] md:bg-[#ca81f2] dark:bg-[#9045b5] dark:bg-[image:radial-gradient(at_20%_20%,hsl(285.7,28%,48%)_0px,transparent_50%),radial-gradient(at_40%_20%,hsl(284.9,28%,39%)_0px,transparent_50%)]"))("")
+       class="pointer-events-none absolute left-0 top-0 z-0 h-full w-full bg-[#ba77df] bg-[image:radial-gradient(at_20%_20%,#d99cd7_0px,transparent_50%),radial-gradient(at_40%_20%,#d28bcf_0px,transparent_50%)] md:bg-[#ba77df] dark:bg-[#9045b5] dark:bg-[image:radial-gradient(at_20%_20%,hsl(285.7,28%,48%)_0px,transparent_50%),radial-gradient(at_40%_20%,hsl(284.9,28%,39%)_0px,transparent_50%)]"))("")
     );
 }
 
@@ -1255,7 +1255,7 @@ static char *hero_shader(void)
 {
     return htmc(
         attr(div, htmc_strlit(id="pink-overlay" aria-hidden="true"
-                              class="pointer-events-none absolute left-0 top-0 z-[-1] flex h-[40rem] w-full bg-[image:radial-gradient(at_100%_0%,#ffabbc_0px,transparent_50%),radial-gradient(at_20%_20%,#eda4b2_0px,transparent_50%)] dark:bg-[image:radial-gradient(at_100%_0%,#cf6e81_0px,transparent_50%),radial-gradient(at_20%_20%,#cf7789_0px,transparent_50%)] min-[601px]:bg-[image:radial-gradient(at_100%_0%,#ffabbc_0px,transparent_50%),radial-gradient(at_0%_0%,#ffffffd3_0px,transparent_50%),radial-gradient(at_30%_0%,#eda4b2_0px,transparent_50%)] dark:min-[601px]:bg-[image:radial-gradient(at_100%_0%,#cf6e81_0px,transparent_50%),radial-gradient(at_0%_0%,#ffffff40_0px,transparent_50%),radial-gradient(at_30%_0%,#cf7789_0px,transparent_50%)] data-[shader]:bg-none!"))(""),
+                              class="pointer-events-none absolute left-0 top-0 z-[-1] flex h-[40rem] w-full bg-[image:radial-gradient(at_100%_0%,#eb9dad_0px,transparent_50%),radial-gradient(at_20%_20%,#da97a4_0px,transparent_50%)] dark:bg-[image:radial-gradient(at_100%_0%,#cf6e81_0px,transparent_50%),radial-gradient(at_20%_20%,#cf7789_0px,transparent_50%)] min-[601px]:bg-[image:radial-gradient(at_100%_0%,#eb9dad_0px,transparent_50%),radial-gradient(at_0%_0%,#ffffffb8_0px,transparent_50%),radial-gradient(at_30%_0%,#da97a4_0px,transparent_50%)] dark:min-[601px]:bg-[image:radial-gradient(at_100%_0%,#cf6e81_0px,transparent_50%),radial-gradient(at_0%_0%,#ffffff40_0px,transparent_50%),radial-gradient(at_30%_0%,#cf7789_0px,transparent_50%)] data-[shader]:bg-none!"))(""),
         attr(canvas, htmc_strlit(id="hero-shader" aria-hidden="true"
                                  class="pointer-events-none absolute left-0 top-0 z-[-1] h-[40rem] w-full"))(""),
         own(inline_script("js/hero-shader.js"))
@@ -2496,7 +2496,7 @@ static int page_article(const Article *entry)
         own(cursor_canvas()),
         own(navbar(base)),
         attr(div, htmc_strlit(id="article-scroll" data-scroll-root
-                              class="h-full w-full overflow-x-hidden overflow-y-scroll bg-[#f2f0d4] pb-11 pt-[7rem] selection:bg-[#0000004b] [scrollbar-width:none] dark:bg-[#202020]"))(
+                              class="h-full w-full overflow-x-hidden overflow-y-scroll bg-[#dfddc3] pb-11 pt-[7rem] selection:bg-[#0000004b] [scrollbar-width:none] dark:bg-[#202020]"))(
             attr(div, htmc_strlit(class="items-center justify-center md:flex"))(
                 attr(div, htmc_fmt("class=\"%s %s\"", article_prose_class, heading_link_class))(
                     h1(htmc_fmt("%s", entry->title)),
