@@ -89,8 +89,7 @@ modify `deps/`) are in `CLAUDE.md`. This skill holds the details.
   | `articles/<slug>.html` | article bodies |
   | `assets/` | every font, image, icon and video the site uses (copied to `out/assets/`) |
   | `assets/images/og/home.png` | 1200×630 link-preview image (`share_image`) of pages without a cover; regenerate it at that size if the name or look changes |
-  | `js/gameproject2-slider.js` | the gameproject2 slider (`gameproject2_slider()`): moves `data-active` between slides, arrows and left/right keys wrap around, pauses hidden videos and plays the shown one, updates the screen-reader status; inlined only when there are 2+ slides |
-  | `assets/video/gameproject2.webm` | the gameproject2 slider's first slide (currently a placeholder test pattern; replace the file with a gameplay walk, keep the name) |
+  | `js/gameproject2-slider.js` | the gameproject2 slider (`gameproject2_slider()`): moves `data-active` between slides, arrows and left/right keys wrap around, plays the shown slide's video only while the slider is on screen and pauses the rest, updates the screen-reader status; always inlined |
   | `assets/images/gameproject2/` | the gameproject2 slider's images: `screenshot-1.webp` … `screenshot-4.webp`, 1280×720 stills rendered by the game (canyon, hall, stairs, tower), in route order |
 
 - **One function per page** (`page_home`, `page_articles`, `page_404`,

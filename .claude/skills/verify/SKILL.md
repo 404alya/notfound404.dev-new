@@ -115,7 +115,7 @@ Drive with Playwright and Chromium; see "Playwright notes" below.
   heading entries restore the scroll position; language links fade like
   other internal links;
 - home headings: the same four checks for `index.html#<id>` with every id
-  (`who-am-i`, `experience`, `knowledge-center`, and `gameproject2` in dev only) at both
+  (`who-am-i`, `experience`, `knowledge-center`, and `monolith` in dev only) at both
   viewports, landing at 96 px every time (repeat the loads: this used to
   be intermittent). Heading links inherit colour and weight, have
   `cursor: pointer`, and show the `#` on hover without changing the
@@ -160,11 +160,12 @@ and confirm the intended design:
 - the Experience section sits above "Knowledge Center";
 - prod: the home page has no gameproject2 section ("Knowledge Center" is
   the last one);
-- dev: the "gameproject2" section below "Knowledge Center": the yellow
+- dev: the "Monolith" section (`gameproject2_section()`) below "Knowledge Center": the yellow
   "In development" pill at the right end of the heading row (lighter in
-  the light theme), three paragraphs describing the game (loneliness, the
-  gun, radar and flashlight), and a 16:9 slider of videos and images (a
-  looping video first) with round previous/next arrows over its edges and
+  the light theme), three paragraphs from the Monolith README (white links,
+  inline code as faint pills without backticks, no taller lines), and a 16:9
+  slider of videos and images (the Monolith demo first: poster until the
+  slider is on screen, then it plays and loops; paused when scrolled away) with round previous/next arrows over its edges and
   a rotating yellow border (static under `prefers-reduced-motion`); slides
   switch at once, with no fade;
 - the articles list is ordered newest to oldest;

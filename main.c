@@ -200,13 +200,15 @@ typedef enum { SLIDE_IMAGE, SLIDE_VIDEO } SlideKind;
 
 typedef struct {
     SlideKind kind;
-    const char *path; /* under assets/ */
-    const char *alt;  /* img alt, or the video's aria-label */
+    const char *path;   /* under assets/, or an absolute https:// URL */
+    const char *alt;    /* img alt, or the video's aria-label */
+    const char *poster; /* video only, optional: same rules as path */
 } Slide;
 
 static const Slide gameproject2_slides[] = {
-    { .kind = SLIDE_VIDEO, .path = "video/gameproject2.webm",
-      .alt = "Walking from the dark canyon through the pillared hall and up the stairs to the terrace" },
+    { .kind = SLIDE_VIDEO, .path = "https://assets.notfound404.dev/2026-11-14%2015-31-33-clean-intro.mp4",
+      .poster = "https://assets.notfound404.dev/2026-11-14%2015-31-33-clean-intro-thumbnail.png",
+      .alt = "Monolith demo: editing a 3D level by pointing at it and typing requests" },
     { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-1.webp",
       .alt = "A narrow concrete canyon with towering walls, opening onto the pillared hall" },
     { .kind = SLIDE_IMAGE, .path = "images/gameproject2/screenshot-2.webp",
@@ -745,7 +747,7 @@ static const char *const home_headings[HOME_HEADING_COUNT] = {
     [HOME_ABOUT] = "Who am I?",
     [HOME_EXPERIENCE] = "Experience",
     [HOME_SKILLS] = "Knowledge Center",
-    [HOME_GAMEPROJECT2] = "gameproject2",
+    [HOME_GAMEPROJECT2] = "Monolith",
 };
 
 /* Heap id of a home heading, by the article rules: heading_slug(), and a
@@ -1571,23 +1573,44 @@ static const char gameproject2_border_class[] =
 static const char gameproject2_slide_class[] =
     "absolute inset-0 m-0 block size-full object-cover invisible data-[active]:visible";
 
+/* src of a slide's media: an absolute URL as it is, otherwise <base>assets/<path>. */
+static char *slide_src(const char *path, const char *base)
+{
+    if (strncmp(path, "https://", 8) == 0)
+        return format_string("%s", path);
+    return format_string("%sassets/%s", base, path);
+}
+
 static char *gameproject2_slide(const Slide *slide, const char *base, bool active)
 {
     const char *active_attr = active ? " data-active" : "";
+    char *src = slide_src(slide->path, base);
+    char *result;
 
     /* <img> is a void tag: format it whole (see the htmc void-tag bug in
      * PROMPT-INSTRUCTIONS.md) instead of going through img(). */
-    if (slide->kind == SLIDE_IMAGE)
-        return format_string("<img src=\"%sassets/%s\" alt=\"%s\" decoding=\"async\" data-gameproject2-slide%s class=\"%s\">",
-                             base, slide->path, slide->alt, active_attr, gameproject2_slide_class);
+    if (slide->kind == SLIDE_IMAGE) {
+        result = format_string("<img src=\"%s\" alt=\"%s\" decoding=\"async\" data-gameproject2-slide%s class=\"%s\">",
+                               src, slide->alt, active_attr, gameproject2_slide_class);
+        free(src);
+        return result;
+    }
 
-    /* Hidden videos autoplay too; gameproject2-slider.js pauses them until
-     * their slide is shown. */
-    return htmc(
-        attr(video, htmc_fmt("src=\"%sassets/%s\" aria-label=\"%s\" data-gameproject2-slide%s class=\"%s\"",
-                             base, slide->path, slide->alt, active_attr, gameproject2_slide_class),
-             htmc_strlit(autoplay muted loop playsinline preload="auto"))("")
+    char *poster_src = slide->poster ? slide_src(slide->poster, base) : NULL;
+    char *poster_attr = poster_src ? format_string(" poster=\"%s\"", poster_src) : format_string("%s", "");
+    free(poster_src);
+
+    /* No autoplay: gameproject2-slider.js plays the shown slide's video only
+     * while the slider is on screen. preload="metadata" keeps the page from
+     * downloading the video before then; the poster fills the box meanwhile. */
+    result = htmc(
+        attr(video, htmc_fmt("src=\"%s\"%s aria-label=\"%s\" data-gameproject2-slide%s class=\"%s\"",
+                             src, poster_attr, slide->alt, active_attr, gameproject2_slide_class),
+             htmc_strlit(muted loop playsinline preload="metadata"))("")
     );
+    free(src);
+    free(poster_attr);
+    return result;
 }
 
 /* Previous/next arrow over one edge of the slider. Hidden until the script
@@ -1624,7 +1647,7 @@ static char *gameproject2_slider(const char *base)
 
     char *html = htmc(
         noscript(style("[data-gameproject2-slide]:not([data-active]) { display: none; }")),
-        attr(div, htmc_strlit(data-gameproject2-slider role="region" aria-roledescription="carousel" aria-label="gameproject2 media"
+        attr(div, htmc_strlit(data-gameproject2-slider role="region" aria-roledescription="carousel" aria-label="Monolith media"
                               class="relative aspect-video w-full overflow-hidden rounded-[calc(var(--radius-xl)-3px)] bg-black/30"))(
             htmc_ccode(
                 for (size_t n = 0; n < gameproject2_slide_count; n++)
@@ -1636,7 +1659,8 @@ static char *gameproject2_slider(const char *base)
             ),
             multiple ? attr(p, htmc_strlit(data-gameproject2-status aria-live="polite" class="sr-only"))(status) : ""
         ),
-        multiple ? own(inline_script("js/gameproject2-slider.js")) : ""
+        /* Always: besides the arrows, it plays the video only while on screen. */
+        own(inline_script("js/gameproject2-slider.js"))
     );
     free(status);
     return html;
@@ -1651,31 +1675,72 @@ static const char gameproject2_badge_class[] =
     "ml-auto whitespace-nowrap rounded-full bg-yellow-300 px-3 py-0.5 text-sm font-semibold text-black "
     "dark:bg-yellow-400 md:text-base";
 
+/* Links and inline code in the section's text, matched to the light home
+ * prose (home_prose_class styles neither): white links, code as a faint pill
+ * without the prose plugin's backticks. */
+static const char gameproject2_text_class[] =
+    "prose-a:cursor-pointer prose-a:text-[#ffffffdd] prose-a:decoration-[#ffffff80] prose-a:underline-offset-4 "
+    "hover:prose-a:decoration-white prose-code:rounded-md prose-code:bg-black/20 prose-code:px-1.5 "
+    "prose-code:py-0.5 prose-code:leading-none prose-code:font-normal prose-code:text-[#ffffffd9] prose-code:text-sm md:prose-code:text-base "
+    "[&_code]:before:content-none [&_code]:after:content-none";
+
+/* Small GitHub icon beside the section heading, linking to the repository.
+ * not-prose: the prose img margins would push it off the heading's baseline.
+ * The image is formatted whole (htmc void-tag bug). */
+static char *monolith_github_link(const char *base)
+{
+    return format_string(
+        "<a href=\"https://github.com/404alya/Monolith\" target=\"_blank\" rel=\"noopener noreferrer\" "
+        "aria-label=\"Monolith on GitHub\" title=\"Monolith on GitHub\" "
+        "class=\"not-prose flex cursor-pointer transition-opacity duration-200 hover:opacity-60\">"
+        "<img src=\"%sassets/images/svg/github.svg\" alt=\"\" class=\"size-6 md:size-7\"></a>",
+        base);
+}
+
 /* Project showcase: text and a slider of gameplay videos and screenshots. */
 static char *gameproject2_section(const char *base)
 {
     return htmc(
         style("\n@keyframes gameproject2-spin { to { transform: rotate(1turn); } }\n"),
-        attr(div, htmc_fmt("class=\"%s %s pb-10\"", home_prose_class, heading_link_class))(
+        attr(div, htmc_fmt("class=\"%s %s %s pb-10\"", home_prose_class, heading_link_class, gameproject2_text_class))(
             attr(div, htmc_strlit(class="flex flex-col p-2"))(
                 attr(div, htmc_strlit(class="flex flex-wrap items-baseline gap-x-12"))(
-                    own(home_heading(HOME_GAMEPROJECT2)),
+                    /* gap-x-10 keeps the heading's hover # clear of the line. */
+                    attr(div, htmc_strlit(class="flex items-baseline gap-x-10"))(
+                        own(home_heading(HOME_GAMEPROJECT2)),
+                        attr(div, htmc_strlit(class="relative top-1.5 flex items-center gap-x-4"))(
+                            attr(span, htmc_strlit(aria-hidden="true" class="h-6 w-px bg-white/50 md:h-7"))(""),
+                            own(monolith_github_link(base))
+                        )
+                    ),
                     attr(span, htmc_fmt("class=\"%s\"", gameproject2_badge_class))("In development")
                 ),
                 attr(p, htmc_strlit(class="max-w-4xl"))(
-                    "gameproject2 is a game about being alone. You walk through a vast brutalist world of raw "
-                    "concrete, from a dark canyon through a hall of giant pillars to a tower lost in the fog, and the "
-                    "music and sounds are there to unsettle you. It should feel empty, eerie and lonely the whole way."
+                    "An ", strong("AI-assisted map designer"), " for 3D levels of any style. You fly through a "
+                    "level, point at a spot, select objects or drag a rectangle over the screen, and type what should "
+                    "change. e.g. \"make this wall twice as tall\", \"plant three more pines along the path\", "
+                    "\"hang a neon sign over each of these stalls\"."
                 ),
                 attr(p, htmc_strlit(class="max-w-4xl"))(
-                    "You'll carry three things: a gun, a radar and a flashlight. The gun opens locked places. Beyond "
-                    "that, it's mostly there so you feel a little safer: you keep it in your hands, and when something "
-                    "scares you, you shoot."
+                    "Claude decides ", em("what"), " changes; how it is changed is ", strong("deterministic"), ". "
+                    "The map is plain text, edits go through a small edit language (", code("--apply-edits"), "), a "
+                    "compiled map recompiles to the same bytes, the same build renders the same image, and box dumps, "
+                    "scene diffs and pixel-compared screenshots show exactly what an edit did. Monolith follows the ",
+                    attr(a, htmc_strlit(href="https://www.slopmanifesto.com/"))("No AI Slop manifesto"),
+                    ": a person approves every change to how a scene looks, and anything a tool can check (warnings, "
+                    "leaks, shaders, pixels) is left to the tool. ", code("--export"), " turns a map into plain C11 "
+                    "for your own game, held to the same rules as the editor: no editor code."
                 ),
                 attr(p, htmc_strlit(class="max-w-4xl"))(
-                    "The radar shows living things, and it gets loud when it finds one. Most of the time it stays "
-                    "empty. But every now and then it hints that something is alive far away, just enough to keep you "
-                    "on edge."
+                    "Monolith is the editor and the viewer. It is written in plain C11 on ",
+                    attr(a, htmc_strlit(href="https://www.raylib.com/"))("raylib"), " 5.5 and ",
+                    attr(a, htmc_strlit(href="https://github.com/Bigfoot71/r3d"))("R3D"),
+                    " 0.10 (deferred PBR: shadows, ambient occlusion, fog, volumetric fog, bloom, procedural sky). A "
+                    "level is a ", strong("map package"), " in ", code("maps/&lt;name&gt;/"), ": a plain-text ",
+                    code(".map"), " file of boxes, models, materials, lights and environment, a ", code("MAP.md"),
+                    " design brief that keeps every edit in the map's style, and the map's shaders, models and "
+                    "textures. The scene runtime (", code("runtime/monolith_scene.h/.c"), ") also loads a package "
+                    "in any other raylib + R3D program, so a map can ship in your own game."
                 ),
                 attr(div, htmc_fmt("class=\"%s\"", gameproject2_border_class))(
                     own(gameproject2_slider(base))
@@ -2265,7 +2330,7 @@ static int page_home(void)
         own(cursor_canvas()),
         own(progress_bar()),
         own(navbar(base)),
-        attr(div, htmc_strlit(id="scroll-container" data-scroll-root class="h-screen w-screen overflow-y-scroll [scrollbar-width:none]"))(
+        attr(div, htmc_strlit(id="scroll-container" data-scroll-root class="h-dvh w-screen overflow-y-scroll [scrollbar-width:none]"))(
             attr(div, htmc_strlit(class="flex w-full flex-col justify-center gap-7 selection:bg-[#ffffff54]"))(
                 own(background_layer()),
                 attr(div, htmc_strlit(class="relative z-10 pt-20"))(
@@ -2279,7 +2344,7 @@ static int page_home(void)
                         /* Placeholder content for now: dev only until it's ready to publish. */
                         production ? "" : own(gameproject2_section(base))
                     ),
-                    attr(div, htmc_strlit(class="flex w-full pt-[10rem] flex-col items-center"))(
+                    attr(div, htmc_strlit(class="flex w-full pt-[10rem] pb-[calc(3rem+env(safe-area-inset-bottom))] flex-col items-center"))(
                         own(final_words())
                     )
                 )

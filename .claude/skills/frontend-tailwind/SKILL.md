@@ -42,6 +42,11 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
   Prefix the name with the component to avoid clashes. Shared animations go in
   `@theme` in `css/tailwind-config.css`. Every looping animation has a
   `motion-reduce:` fallback.
+- Full-height scroll roots use `h-dvh` or `h-full`, never `h-screen`
+  (100vh): the pages scroll inside the root, not the window, so mobile
+  browser bars never collapse and a 100vh box ends under them (the home
+  page's last link was hidden). The home page's last block also keeps
+  `pb-[calc(3rem+env(safe-area-inset-bottom))]` under the source-code link.
 - Videos reserve their size before loading (a fixed box or `aspect-video`),
   are `muted loop playsinline autoplay`, and never use `loading="lazy"`.
 - **Text sizes:** every sized text element has a mobile size and a `md:`
@@ -197,7 +202,7 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
   the `articles-and-translations` skill),
   computed from that list alone. That keeps ids deterministic whatever order
   htmc evaluates arguments in, and lets other pages link to them (`nav_links()`).
-  Ids: `who-am-i`, `experience`, `knowledge-center`, `gameproject2`. A new
+  Ids: `who-am-i`, `experience`, `knowledge-center`, `monolith`. A new
   home section heading gets an entry there, not a bare `h2(...)`.
 - `page_transition()` ignores same-page hashes, so heading clicks don't fade.
   `js/heading-links.js` (on article pages and the home page) handles
@@ -218,6 +223,12 @@ Playwright notes there.
 
 ## gameproject2 section
 
+- Its heading reads "Monolith" (id `monolith`); the code keeps the
+  `gameproject2` names. A small white GitHub icon (`monolith_github_link()`,
+  `github.svg`, `not-prose`, new tab) sits beside the heading after a thin
+  vertical line (`w-px bg-white/50`), in a `gap-x-10` group so the hover `#`
+  doesn't overlap the line. Its text shows Monolith's README: links and inline
+  code are styled by `gameproject2_text_class` (the home prose styles neither).
 - The gameproject2 section is dev only for now: `page_home()` skips it in prod
   (see the `build-modes-seo-nginx` skill). Remove that condition to publish it.
 - The section's heading row is a flex row of `home_heading(HOME_GAMEPROJECT2)`
@@ -228,13 +239,20 @@ Playwright notes there.
   the id and link are unchanged; `gap-x-12` keeps the hover `#` clear of it
   on narrow rows.
 - Slides of the home page's gameproject2 slider go in `gameproject2_slides[]`
-  (`kind` `SLIDE_IMAGE` or `SLIDE_VIDEO`, `path` under `assets/`, `alt`: the
-  img alt or the video's aria-label), in display order; the first is shown
+  (`kind` `SLIDE_IMAGE` or `SLIDE_VIDEO`, `path` under `assets/` or an
+  absolute `https://` URL, `alt`: the img alt or the video's aria-label,
+  optional video `poster` with the same path rules; `slide_src()` resolves
+  them), in display order. The first slide is the Monolith demo video served
+  from `https://assets.notfound404.dev/`, with its thumbnail as poster; the first is shown
   before JS runs. Each slide fills the 16:9 box with `object-cover`, so use
   16:9 media. Images are formatted with `format_string()` (void-tag bug,
   see the `htmc-c-rules` skill). Slides switch at once, with no fade: hidden ones are
   `invisible` (out of the accessibility tree); a `<noscript>` rule hides them, and the arrows carry
-  `hidden` until the script removes it. With one slide there are no arrows,
-  no status and no script.
+  `hidden` until the script removes it. With one slide there are no arrows
+  and no status, but the script is still inlined.
+- Slider videos are the exception to the video rule above: no `autoplay`,
+  `preload="metadata"` and a `poster`. `js/gameproject2-slider.js` plays
+  (looping) only the shown slide's video, and only while the slider is at
+  least 25% on screen (IntersectionObserver); without JS the poster shows.
 - The slider's script and assets are listed in the file table of the
   `htmc-c-rules` skill.

@@ -119,12 +119,14 @@ clang -Wall -Wextra -g -fsanitize=address,undefined ./deps/htmc/htm.c main.c -o 
   `assets/` and inline it or copy it instead. Check that the file doesn't
   contain `</script>` or `</style>` before inlining it.
 - The only allowed runtime network calls are the GitHub repos API, the Lanyard
-  presence API, and images those APIs return.
+  presence API, images those APIs return, and media on the owner's own
+  `https://assets.notfound404.dev/` (the gameproject2 demo video and poster).
 
 ### Self-contained assets
 
 - The build never reads from other projects. Every asset lives
-  in `assets/`, and pages reference only `assets/...` paths.
+  in `assets/`, and pages reference only `assets/...` paths, except the
+  gameproject2 demo media on `https://assets.notfound404.dev/` (above).
 - `assets/` holds only files the site uses. A new skill icon, social icon or
   article cover must be added to `assets/images/<type>/` along with its entry,
   otherwise it 404s.
