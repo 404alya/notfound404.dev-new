@@ -227,7 +227,22 @@ Playwright notes there.
   `gameproject2` names. A small white GitHub icon (`monolith_github_link()`,
   `github.svg`, `not-prose`, new tab) sits beside the heading after a thin
   vertical line (`w-px bg-white/50`), in a `gap-x-10` group so the hover `#`
-  doesn't overlap the line. Its text shows Monolith's README: links and inline
+  doesn't overlap the line. After the icon comes a pixel-style "Star"
+  button (`monolith_star_button()`): a 9×9 pixel-art star
+  (`pixel_star_path`, `crispEdges`, `text-yellow-300`), "Star" and the
+  repo's star count in Pixelify, square 2px white border and a hard offset
+  shadow it sinks into on press. It links to the repo (a page can't star for
+  the visitor); `js/monolith-stars.js` fills the count, whose box is
+  reserved with `min-w-[2ch]`.
+- Mobile heading layout (below `md`): the pill on its own line at the right
+  (`order-first`, `mt-12` in place of the h2's top margin), then the heading
+  with the icon and Star button pushed to the row's right end
+  (`justify-between`, `items-center`, `gap-x-4`, no divider line),
+  `mt-3 mb-5` around the row. The icon group, icon and button are
+  `shrink-0`: at 320 px the row is full, and the icon used to shrink to
+  nothing. Desktop keeps one baseline-aligned row with the pill at the end.
+  The GitHub icon's `img` carries `my-0`: `css/prose.css` gives every
+  `.prose img` a 2em margin and `not-prose` doesn't undo it. Its text shows Monolith's README: links and inline
   code are styled by `gameproject2_text_class` (the home prose styles neither).
 - The gameproject2 (Monolith) section is shown in both modes.
 - The section's heading row is a flex row of `home_heading(HOME_GAMEPROJECT2)`

@@ -158,7 +158,9 @@ and confirm the intended design:
   skill), and the skill tooltip and
   presence panel are wide enough to fit it;
 - the Experience section sits above "Knowledge Center";
-- both modes: the "Monolith" section (`gameproject2_section()`) below "Knowledge Center": the yellow
+- both modes: the "Monolith" section (`gameproject2_section()`) below "Knowledge Center": after the
+  heading a thin line, the GitHub icon and the pixel "Star" button with a
+  yellow pixel star and the live star count (empty if the API fails); the yellow
   "In development" pill at the right end of the heading row (lighter in
   the light theme), three paragraphs from the Monolith README (white links,
   inline code as faint pills without backticks, no taller lines), and a 16:9

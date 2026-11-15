@@ -1672,7 +1672,7 @@ static char *gameproject2_slider(const char *base)
  * makes them; the row's gap keeps the link's hover "#" clear of it when the
  * row is narrow. */
 static const char gameproject2_badge_class[] =
-    "ml-auto whitespace-nowrap rounded-full bg-yellow-300 px-3 py-0.5 text-sm font-semibold text-black "
+    "order-first ml-auto mt-12 md:order-none md:mt-0 whitespace-nowrap rounded-full bg-yellow-300 px-3 py-0.5 text-sm font-semibold text-black "
     "dark:bg-yellow-400 md:text-base";
 
 /* Links and inline code in the section's text, matched to the light home
@@ -1685,16 +1685,49 @@ static const char gameproject2_text_class[] =
     "[&_code]:before:content-none [&_code]:after:content-none";
 
 /* Small GitHub icon beside the section heading, linking to the repository.
- * not-prose: the prose img margins would push it off the heading's baseline.
+ * my-0: css/prose.css gives every .prose img a 2em margin (not-prose doesn't
+ * undo it here), which made the row 88px tall.
  * The image is formatted whole (htmc void-tag bug). */
 static char *monolith_github_link(const char *base)
 {
     return format_string(
         "<a href=\"https://github.com/404alya/Monolith\" target=\"_blank\" rel=\"noopener noreferrer\" "
         "aria-label=\"Monolith on GitHub\" title=\"Monolith on GitHub\" "
-        "class=\"not-prose flex cursor-pointer transition-opacity duration-200 hover:opacity-60\">"
-        "<img src=\"%sassets/images/svg/github.svg\" alt=\"\" class=\"size-6 md:size-7\"></a>",
+        "class=\"not-prose flex shrink-0 cursor-pointer transition-opacity duration-200 hover:opacity-60\">"
+        "<img src=\"%sassets/images/svg/github.svg\" alt=\"\" class=\"my-0 size-6 shrink-0 md:size-7\"></a>",
         base);
+}
+
+/* Pixel-art star (9x9 grid, one rect per run of pixels), filled with the
+ * text colour. crispEdges keeps the pixels sharp at any size. */
+static const char pixel_star_path[] =
+    "M4 0h1v1h-1zM3 1h3v1h-3zM3 2h3v1h-3zM0 3h9v1h-9zM1 4h7v1h-7zM2 5h5v1h-5zM2 6h5v1h-5z"
+    "M1 7h3v1h-3zM5 7h3v1h-3zM1 8h2v1h-2zM6 8h2v1h-2z";
+
+/* Pixel-style "Star" button beside the GitHub icon: square corners, a hard
+ * offset shadow that the button sinks into when pressed, and the repo's star
+ * count filled in by js/monolith-stars.js (its box is reserved with
+ * min-w-[2ch] so the count can't shift the row). It links to the repository,
+ * where the real Star button is: a page can't star a repo for the visitor. */
+static const char monolith_star_class[] =
+    "not-prose group flex shrink-0 cursor-pointer items-center gap-2 border-2 border-white/70 bg-white/10 px-2 py-0.5 "
+    "font-pixelify text-sm text-white no-underline! shadow-[3px_3px_0_0_#0000004d] "
+    "transition-[translate,box-shadow,background-color] duration-150 hover:bg-white/20 "
+    "active:translate-x-[3px] active:translate-y-[3px] active:shadow-none md:text-base";
+
+static char *monolith_star_button(void)
+{
+    return htmc(
+        attr(a, htmc_fmt("href=\"https://github.com/404alya/Monolith\" target=\"_blank\" rel=\"noopener noreferrer\" "
+                         "data-monolith-stars aria-label=\"Star Monolith on GitHub\" class=\"%s\"", monolith_star_class))(
+            htmc_fmt("<svg viewBox=\"0 0 9 9\" aria-hidden=\"true\" shape-rendering=\"crispEdges\" "
+                     "class=\"size-4 fill-current text-yellow-300 transition-transform duration-150 "
+                     "group-hover:scale-110 md:size-5\"><path d=\"%s\"/></svg>", pixel_star_path),
+            attr(span, htmc_strlit(class="leading-none"))("Star"),
+            attr(span, htmc_strlit(aria-hidden="true" class="h-4 w-0.5 bg-white/50 md:h-5"))(""),
+            attr(span, htmc_strlit(data-monolith-stars-count class="min-w-[2ch] text-center leading-none tabular-nums"))("")
+        )
+    );
 }
 
 /* Project showcase: text and a slider of gameplay videos and screenshots. */
@@ -1704,13 +1737,18 @@ static char *gameproject2_section(const char *base)
         style("\n@keyframes gameproject2-spin { to { transform: rotate(1turn); } }\n"),
         attr(div, htmc_fmt("class=\"%s %s %s pb-10\"", home_prose_class, heading_link_class, gameproject2_text_class))(
             attr(div, htmc_strlit(class="flex flex-col p-2"))(
-                attr(div, htmc_strlit(class="flex flex-wrap items-baseline gap-x-12"))(
+                /* Mobile: the pill on its own line at the right, then the
+                 * heading with the icon and star button at the row's right
+                 * end (no line), centred with the heading; the pill takes the
+                 * h2's top margin so it sits close above it. Desktop: one row, the pill at the right end. */
+                attr(div, htmc_strlit(class="flex flex-col md:flex-row md:flex-wrap md:items-baseline md:gap-x-12"))(
                     /* gap-x-10 keeps the heading's hover # clear of the line. */
-                    attr(div, htmc_strlit(class="flex items-baseline gap-x-10"))(
+                    attr(div, htmc_strlit(class="flex items-center justify-between gap-x-4 max-md:mt-3 max-md:mb-5 max-md:[&_h2]:my-0 md:items-baseline md:justify-start md:gap-x-10"))(
                         own(home_heading(HOME_GAMEPROJECT2)),
-                        attr(div, htmc_strlit(class="relative top-1.5 flex items-center gap-x-4"))(
-                            attr(span, htmc_strlit(aria-hidden="true" class="h-6 w-px bg-white/50 md:h-7"))(""),
-                            own(monolith_github_link(base))
+                        attr(div, htmc_strlit(class="flex shrink-0 items-center gap-x-3 md:relative md:top-1.5 md:gap-x-4"))(
+                            attr(span, htmc_strlit(aria-hidden="true" class="hidden h-7 w-px bg-white/50 md:block"))(""),
+                            own(monolith_github_link(base)),
+                            own(monolith_star_button())
                         )
                     ),
                     attr(span, htmc_fmt("class=\"%s\"", gameproject2_badge_class))("In development")
@@ -1746,7 +1784,8 @@ static char *gameproject2_section(const char *base)
                     own(gameproject2_slider(base))
                 )
             )
-        )
+        ),
+        own(inline_script("js/monolith-stars.js"))
     );
 }
 
