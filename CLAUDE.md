@@ -22,7 +22,7 @@ Always run from the project root:
 - The mode is stored once in `production` by `parse_args()` and read wherever
   output differs. In short: dev (the reference build) uses relative paths;
   prod uses root-absolute paths, adds canonical/Open Graph tags, writes
-  `out/nginx.conf` and leaves out the gameproject2 section. The full table
+  `out/nginx.conf`. The full table
   and its rules are in the `build-modes-seo-nginx` skill.
 - `main.c` includes only `deps/htmc/htmc.h`. `htm.c` must be passed to the
   compiler. Never `#include "htm.c"` in `main.c`: that causes "multiple

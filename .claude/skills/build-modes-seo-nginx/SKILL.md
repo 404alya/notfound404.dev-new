@@ -16,7 +16,6 @@ The build commands and how the mode is chosen are in `CLAUDE.md`.
 | canonical, `og:*`, `twitter:card` (`share_meta()`) | not emitted | absolute `https://notfound404.dev/…` on every page except `404.html` |
 | hreflang `alternate` links, JSON-LD `@id` / `url` | absolute `site_url` (unchanged) | same |
 | `out/nginx.conf` | never written; a stale one is deleted | written by `write_nginx_conf()` |
-| home page's gameproject2 section (`gameproject2_section()`) | shown | left out (placeholder content), with its slider script and keyframes; its assets are still copied |
 
 - **Dev is the reference build:** it works from `python3 -m http.server` in
   `out/` (or any directory). A change that only touches the mode plumbing must

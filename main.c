@@ -2341,8 +2341,7 @@ static int page_home(void)
                         own(description_section()),
                         own(experience_section(base)),
                         own(skills_section()),
-                        /* Placeholder content for now: dev only until it's ready to publish. */
-                        production ? "" : own(gameproject2_section(base))
+                        own(gameproject2_section(base))
                     ),
                     attr(div, htmc_strlit(class="flex w-full pt-[10rem] pb-[calc(3rem+env(safe-area-inset-bottom))] flex-col items-center"))(
                         own(final_words())

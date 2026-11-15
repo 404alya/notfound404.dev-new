@@ -115,7 +115,7 @@ Drive with Playwright and Chromium; see "Playwright notes" below.
   heading entries restore the scroll position; language links fade like
   other internal links;
 - home headings: the same four checks for `index.html#<id>` with every id
-  (`who-am-i`, `experience`, `knowledge-center`, and `monolith` in dev only) at both
+  (`who-am-i`, `experience`, `knowledge-center`, `monolith`) at both
   viewports, landing at 96 px every time (repeat the loads: this used to
   be intermittent). Heading links inherit colour and weight, have
   `cursor: pointer`, and show the `#` on hover without changing the
@@ -158,9 +158,7 @@ and confirm the intended design:
   skill), and the skill tooltip and
   presence panel are wide enough to fit it;
 - the Experience section sits above "Knowledge Center";
-- prod: the home page has no gameproject2 section ("Knowledge Center" is
-  the last one);
-- dev: the "Monolith" section (`gameproject2_section()`) below "Knowledge Center": the yellow
+- both modes: the "Monolith" section (`gameproject2_section()`) below "Knowledge Center": the yellow
   "In development" pill at the right end of the heading row (lighter in
   the light theme), three paragraphs from the Monolith README (white links,
   inline code as faint pills without backticks, no taller lines), and a 16:9

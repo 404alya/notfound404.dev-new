@@ -229,8 +229,7 @@ Playwright notes there.
   vertical line (`w-px bg-white/50`), in a `gap-x-10` group so the hover `#`
   doesn't overlap the line. Its text shows Monolith's README: links and inline
   code are styled by `gameproject2_text_class` (the home prose styles neither).
-- The gameproject2 section is dev only for now: `page_home()` skips it in prod
-  (see the `build-modes-seo-nginx` skill). Remove that condition to publish it.
+- The gameproject2 (Monolith) section is shown in both modes.
 - The section's heading row is a flex row of `home_heading(HOME_GAMEPROJECT2)`
   and a yellow "In development" pill (`gameproject2_badge_class`) pushed to
   the row's right end with `ml-auto`: `bg-yellow-400` like the slider's
