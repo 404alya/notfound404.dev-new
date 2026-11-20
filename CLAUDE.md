@@ -119,8 +119,9 @@ clang -Wall -Wextra -g -fsanitize=address,undefined ./deps/htmc/htm.c main.c -o 
   `assets/` and inline it or copy it instead. Check that the file doesn't
   contain `</script>` or `</style>` before inlining it.
 - The only allowed runtime network calls are the GitHub repos API, the Lanyard
-  presence API, images those APIs return, and media on the owner's own
-  `https://assets.notfound404.dev/` (the gameproject2 demo video and poster).
+  presence API (WebSocket, falling back to REST polling), images those APIs
+  return, and media on the owner's own `https://assets.notfound404.dev/` (the
+  gameproject2 demo video and poster).
 
 ### Self-contained assets
 

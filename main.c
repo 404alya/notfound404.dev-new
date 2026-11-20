@@ -1798,30 +1798,32 @@ static char *final_words(void)
     );
 }
 
-/* Discord status panel in the bottom-left corner, fed by the Lanyard API.
- * Off the home page for now (see page_home()); kept, without the
- * unused-function warning, until it comes back. */
-__attribute__((unused)) static char *presence_widget(const char *base)
+/* Live status panel in the bottom-left corner: what the owner is doing right
+ * now on Discord (status, music, games), fed by the Lanyard API. Collapses to
+ * a small "What I'm up to" pill. Desktop only: hidden below md and removed on
+ * touch screens (js/presence.js). The icons are formatted with format_string()
+ * because img() hits the htmc void-tag bug here. */
+static char *presence_widget(const char *base)
 {
     return htmc(
-        attr(div, htmc_strlit(id="presence-widget" class="fixed bottom-2 left-2 z-30"))(
-            attr(button, htmc_strlit(id="openPresenceBtn" aria-label="Show presence"
-                                     class="absolute bottom-2 left-2 z-30 max-w-sm animate-fade cursor-pointer space-y-2 rounded-lg bg-[#000000aa] p-1 shadow-lg backdrop-blur-xs duration-300 hover:opacity-0"))(
-                img(htmc_fmt("src=\"%sassets/images/svg/up.svg\"", base), htmc_strlit(alt="" class="h-5 w-5 opacity-50"))
+        attr(div, htmc_strlit(id="presence-widget" class="fixed bottom-2 left-2 z-30 hidden md:block"))(
+            attr(button, htmc_strlit(id="openPresenceBtn" aria-label="Show my live status"
+                                     class="flex animate-fade cursor-pointer items-center gap-1 rounded-full bg-[#000000aa] py-1 pl-2 pr-2.5 text-xs leading-4 text-white/80 shadow-lg backdrop-blur-xs duration-300 hover:text-white md:text-sm md:leading-5"))(
+                own(format_string("<img src=\"%sassets/images/svg/up.svg\" alt=\"\" class=\"size-3 opacity-60 md:size-3.5\">", base)),
+                "What I'm up to"
             ),
             attr(div, htmc_strlit(id="presenceContent"
-                                  class="w-[14rem] max-w-sm rounded-lg bg-gradient-to-tr md:w-[18rem] from-[#000000aa] to-[#4b1f3eaa] p-2 shadow-[0_0px_10px_1px_rgba(0,0,0,0.5)] backdrop-blur-xs"))(
-                attr(div, htmc_strlit(class="flex w-full items-center justify-between"))(
-                    attr(div, htmc_strlit(class="flex animate-pulse items-center justify-center gap-[0.4rem] p-1"))(
-                        attr(div, htmc_strlit(id="presenceDot" class="shrink rounded-full p-[0.35rem] aspect-square"))(""),
-                        attr(div, htmc_strlit(id="presencePlatform" class="shrink pt-[0.1rem] text-center text-sm capitalize text-white"))("")
+                                  class="w-[15.5rem] rounded-lg bg-gradient-to-tr from-[#000000aa] to-[#4b1f3eaa] p-2 shadow-[0_0px_10px_1px_rgba(0,0,0,0.5)] md:p-2.5 backdrop-blur-xs md:w-[18rem]"))(
+                attr(div, htmc_strlit(class="flex w-full items-center justify-between gap-2"))(
+                    attr(div, htmc_strlit(class="flex min-w-0 items-center gap-2"))(
+                        attr(div, htmc_strlit(id="presenceDot" class="size-2 shrink-0 animate-pulse rounded-full bg-[#6a7282de] md:size-2.5"))(""),
+                        attr(div, htmc_strlit(id="presencePlatform" class="truncate text-sm text-gray-400 md:text-base"))("Right now on Discord")
                     ),
-                    attr(button, htmc_strlit(id="closePresenceBtn" aria-label="Close" class="flex cursor-pointer items-center opacity-50"))(
-                        img(htmc_fmt("src=\"%sassets/images/svg/line.svg\"", base), htmc_strlit(alt="" class="h-6 w-6 rotate-90"))
+                    attr(button, htmc_strlit(id="closePresenceBtn" aria-label="Hide" class="-m-2 flex shrink-0 cursor-pointer items-center rounded-md p-2 opacity-50 duration-300 hover:bg-white/10 hover:opacity-100"))(
+                        own(format_string("<img src=\"%sassets/images/svg/line.svg\" alt=\"\" class=\"size-4 rotate-90 md:size-5\">", base))
                     )
                 ),
-                attr(div, htmc_strlit(id="activities" class="flex flex-col gap-2"))(""),
-                attr(div, htmc_strlit(class="break-all p-1 text-sm text-gray-500 "))("What am I doing rn?")
+                attr(div, htmc_strlit(id="activities" class="flex flex-col gap-2 empty:hidden mt-2"))("")
             )
         ),
         own(inline_script("js/presence.js"))
@@ -2389,7 +2391,7 @@ static int page_home(void)
             )
         ),
         own(inline_script("js/heading-links.js")),
-        // own(presence_widget(base))
+        own(presence_widget(base))
     );
 
     char *page_title = format_string("%s | %s", site_name, home_title_suffix);

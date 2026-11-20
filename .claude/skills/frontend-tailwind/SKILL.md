@@ -55,6 +55,11 @@ after the cover lifts, ask before visual changes) are in `CLAUDE.md`.
   below `text-sm`. Built-in `text-xs`…`text-9xl` only: no arbitrary sizes
   (`text-[0.8rem]`), no `@theme` font-size tokens. `.prose` headings stay in
   `em` so they follow the container's size.
+  Exception: the presence widget's collapsed pill (`presence_widget()`) and
+  its activity labels and track times (`js/presence.js`) are deliberately small,
+  `text-xs md:text-sm`. The open card follows the rule
+  (`text-sm md:text-base` for every line); its status dot (`size-2
+  md:size-2.5`) and thumbnails (`size-16 md:size-19`) are sized to that text.
 - For state toggled by JS, prefer data attributes plus variants
   (`data-[open]:flex`, `data-[hidden]:-translate-y-24`) over adding and
   removing classes.
