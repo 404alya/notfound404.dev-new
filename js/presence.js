@@ -91,14 +91,15 @@ function activityHtml(act) {
 
   // Music with a known length gets a progress bar; anything else with a start
   // time shows how long it has been going. Both are filled in by tickProgress().
-  const progress = isMusic && start && end && end > start
+  const lengthKnown = end != null;
+  const progress = isMusic && start && (!lengthKnown || end > start)
     ? `
-    <div class="mt-2 flex items-center gap-2 text-xs tabular-nums text-gray-400 md:text-sm" data-start="${start}" data-end="${end}" ${paused ? 'data-paused' : ''}>
+    <div class="mt-2 flex items-center gap-2 text-xs tabular-nums text-gray-400 md:text-sm" data-start="${start}" ${lengthKnown ? `data-end="${end}"` : ''} ${paused ? 'data-paused' : ''}>
       <span data-elapsed class="min-w-[4ch] text-right"></span>
       <div class="h-1 grow overflow-hidden rounded-full bg-white/15">
-        <div data-bar class="h-full w-full origin-left rounded-full ${paused ? 'bg-gray-400' : 'bg-white'}"></div>
+        <div data-bar class="h-full w-full origin-left rounded-full ${paused ? 'bg-gray-400' : 'bg-white'}" style="transform:scaleX(0)"></div>
       </div>
-      <span class="min-w-[4ch]">${formatClock(end - start)}</span>
+      <span class="min-w-[4ch]">${lengthKnown ? formatClock(end - start) : '–:––'}</span>
     </div>`
     : start && !isMusic
       ? `<div class="truncate text-gray-500" data-since="${start}"></div>`
@@ -125,10 +126,12 @@ function tickProgress() {
   const now = Date.now();
   for (const el of activities.querySelectorAll('[data-start]')) {
     if (el.hasAttribute('data-paused') && el.dataset.drawn) continue;
-    const start = Number(el.dataset.start), end = Number(el.dataset.end);
-    const elapsed = Math.min(Math.max(now - start, 0), end - start);
+    // Without data-end the length is unknown: count up, leave the bar empty.
+    const start = Number(el.dataset.start);
+    const length = el.dataset.end ? Number(el.dataset.end) - start : Infinity;
+    const elapsed = Math.min(Math.max(now - start, 0), length);
     el.querySelector('[data-elapsed]').textContent = formatClock(elapsed);
-    el.querySelector('[data-bar]').style.transform = `scaleX(${elapsed / (end - start)})`;
+    if (length !== Infinity) el.querySelector('[data-bar]').style.transform = `scaleX(${elapsed / length})`;
     el.dataset.drawn = '1';
   }
   for (const el of activities.querySelectorAll('[data-since]')) {
@@ -137,16 +140,21 @@ function tickProgress() {
 }
 
 // When a song changes, PreMiD (through Lanyard) can keep the previous song's
-// start time and only move the end: the new song then shows up part-way
-// through, though its length (end - start) is right. A new song whose start
-// equals the previous song's start is treated as starting when we saw the
-// change, keeping its length. Any other start, such as a seek or a corrected
-// update, is used as sent.
+// start time: the new song then shows up part-way through, and its end time
+// is unreliable too. A new song whose start equals the previous song's start
+// counts from when we saw the change. Its length comes from an earlier fresh
+// update for the same song if there was one; otherwise it's shown as unknown
+// until Lanyard sends a real start. Any other start, such as a seek or a
+// corrected update, is used as sent.
 const STALE_START_SLACK_MS = 3000;
+const FRESH_START_MS = 10000; // an update this close to the song's start has a trustworthy length
 let lastTrack = null;  // { key, start } of the song in the previous update
 let staleTrack = null; // { key, start, seenAt } of a new song with a stale start
+const knownLengths = new Map(); // track key -> length (ms) from a fresh update
 
 const trackKey = act => `${act.name}|${act.details || ''}|${act.state || ''}`;
+const isStale = (act, key) => staleTrack && key === staleTrack.key
+  && Math.abs(act.timestamps.start - staleTrack.start) <= STALE_START_SLACK_MS;
 
 function noteTracks(activities) {
   const music = activities.find(act => act.type === 2);
@@ -154,24 +162,30 @@ function noteTracks(activities) {
     lastTrack = staleTrack = null;
     return;
   }
-  const key = trackKey(music), start = music.timestamps?.start;
+  const key = trackKey(music), start = music.timestamps?.start, end = music.timestamps?.end;
+  // A quick skip can give two songs nearly the same start too, but then the
+  // start is recent, and the elapsed time it gives is right.
   if (lastTrack && key !== lastTrack.key && start && lastTrack.start
-      && Math.abs(start - lastTrack.start) <= STALE_START_SLACK_MS) {
+      && Math.abs(start - lastTrack.start) <= STALE_START_SLACK_MS
+      && Date.now() - start > FRESH_START_MS) {
     staleTrack = { key, start, seenAt: Date.now() };
   } else if (staleTrack && key !== staleTrack.key) {
     staleTrack = null;
   }
+  if (start && end > start && !isStale(music, key)) {
+    const sinceStart = Date.now() - start;
+    if (sinceStart > -STALE_START_SLACK_MS && sinceStart < FRESH_START_MS) knownLengths.set(key, end - start);
+  }
   lastTrack = { key, start };
 }
 
+// [start, end] for a music activity; end is null when the length is unknown.
 function trackTimes(act) {
-  let start = act.timestamps?.start, end = act.timestamps?.end;
-  if (start && end && staleTrack && trackKey(act) === staleTrack.key
-      && Math.abs(start - staleTrack.start) <= STALE_START_SLACK_MS) {
-    end = staleTrack.seenAt + (end - start);
-    start = staleTrack.seenAt;
-  }
-  return [start, end];
+  const start = act.timestamps?.start, end = act.timestamps?.end;
+  const key = trackKey(act);
+  if (!start || !end || !isStale(act, key)) return [start, end];
+  const length = knownLengths.get(key);
+  return [staleTrack.seenAt, length ? staleTrack.seenAt + length : null];
 }
 
 function renderPresenceContent(data) {
