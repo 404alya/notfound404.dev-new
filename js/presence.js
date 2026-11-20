@@ -61,7 +61,7 @@ const PAUSE_ICON = `<span class="flex h-3 gap-[3px]" aria-hidden="true"><span cl
 function activityHtml(act) {
   const isMusic = act.type === 2;
   const paused = isMusic && /paus/i.test(act.assets?.small_text || '');
-  const start = act.timestamps?.start, end = act.timestamps?.end;
+  const [start, end] = isMusic ? trackTimes(act) : [act.timestamps?.start, act.timestamps?.end];
   const imgSrc = assetUrl(act.assets?.large_image, act.application_id)
     || assetUrl(act.assets?.small_image, act.application_id);
   const title = act.details ? act.details.trim().replace(act.state || '', '').trim() : '';
@@ -136,7 +136,46 @@ function tickProgress() {
   }
 }
 
+// When a song changes, PreMiD (through Lanyard) can keep the previous song's
+// start time and only move the end: the new song then shows up part-way
+// through, though its length (end - start) is right. A new song whose start
+// equals the previous song's start is treated as starting when we saw the
+// change, keeping its length. Any other start, such as a seek or a corrected
+// update, is used as sent.
+const STALE_START_SLACK_MS = 3000;
+let lastTrack = null;  // { key, start } of the song in the previous update
+let staleTrack = null; // { key, start, seenAt } of a new song with a stale start
+
+const trackKey = act => `${act.name}|${act.details || ''}|${act.state || ''}`;
+
+function noteTracks(activities) {
+  const music = activities.find(act => act.type === 2);
+  if (!music) {
+    lastTrack = staleTrack = null;
+    return;
+  }
+  const key = trackKey(music), start = music.timestamps?.start;
+  if (lastTrack && key !== lastTrack.key && start && lastTrack.start
+      && Math.abs(start - lastTrack.start) <= STALE_START_SLACK_MS) {
+    staleTrack = { key, start, seenAt: Date.now() };
+  } else if (staleTrack && key !== staleTrack.key) {
+    staleTrack = null;
+  }
+  lastTrack = { key, start };
+}
+
+function trackTimes(act) {
+  let start = act.timestamps?.start, end = act.timestamps?.end;
+  if (start && end && staleTrack && trackKey(act) === staleTrack.key
+      && Math.abs(start - staleTrack.start) <= STALE_START_SLACK_MS) {
+    end = staleTrack.seenAt + (end - start);
+    start = staleTrack.seenAt;
+  }
+  return [start, end];
+}
+
 function renderPresenceContent(data) {
+  noteTracks((data.activities || []).filter(Boolean));
   const status = STATUS_LABELS[data.discord_status] ? data.discord_status : 'offline';
   const activitiesHtml = (data.activities || [])
     .filter(act => act && act.type !== 4)
